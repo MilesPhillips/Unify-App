@@ -1,0 +1,57 @@
+body{
+    background-color: white;
+    margin: 5%;
+}
+p{
+    color: black;
+    font-size: 105%;
+
+}
+h1{
+    font-size: 60px;
+    text-align: center;
+}
+h2{
+    text-align: center;
+}
+img{
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 50%;
+    border-radius: 1%;
+}
+.header1 {
+  gap: 5px;
+  Color: black;
+}
+
+.img__wrap:hover .img__description {
+    visibility: visible;
+    opacity: 1;
+  }
+.image-row {
+  display: flex;
+  gap: 10px; /* Adjust the gap between images as needed */
+}
+.image-row img {
+  width: 450px; /* Adjust the width as needed */
+  height: auto;
+}
+
+a{
+    text-align: center;
+    font-size:200%;
+}
+dt{
+    font-weight: bold;
+    font-size: 125%;
+}
+dd{
+    display: list-item;
+    list-style-type: disc;
+    font-size: 125%;
+}
+li{
+    font-size: 125%;
+}
