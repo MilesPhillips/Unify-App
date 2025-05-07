@@ -1,0 +1,11 @@
+<h2>{{ username }}'s Inbox</h2>
+<ul>
+  {% for file in files %}
+    <li>
+      <video width="320" controls>
+        <source src="{{ url_for('uploaded_file', filename=file) }}" type="video/webm">
+        Your browser does not support the video tag.
+      </video>
+    </li>
+  {% endfor %}
+</ul>

@@ -1,0 +1,110 @@
+<<!--!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unified - Home</title>
+  <link rel="stylesheet" href="static/style.css">
+  <style>
+    .highlight {
+      color: #c084fc;
+      font-weight: bold;
+    }
+    .features {
+      margin-top: 30px;
+      text-align: left;
+      color: #d1d5db;
+    }
+    .features li {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body class="home">
+  <div class="container">
+    <h1>Unify</h1>
+    <p class="lead">
+      <span class="highlight">Unify</span> is your secure, real-time location sharing companion.
+      Whether you're keeping tabs on loved ones, meeting up with friends, or staying aware of neighborhood alerts,
+      Unify has you covered with a sleek, intuitive interface and safety-first features.
+    </p>
+    <div class="buttons">
+      <a href="{{ url_for('login') }}" class="btn primary">Login</a>
+      <a href="{{ url_for('profile') }}" class="btn secondary">Go to Profile</a>
+    </div>
+    <ul class="features">
+      <li>📍 Real-time location sharing with friends and family</li>
+      <li>🔔 Alerts when someone arrives or leaves a location</li>
+      <li>🛡️ Privacy-first design — only share what you choose</li>
+      <li>🌐 Sleek, mobile-friendly design built for all devices</li>
+    </ul>
+  </div>
+</body>
+</html>-->
+
+<!--make a python backend to store user info-->
+<!--flask has ways to store user info-->
+<!--SQlite is a good database-->
+<!--split the login into login and a sign up that asks them more questions-->
+
+<!--Test index.html(wiht login and record functions)-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Unify - Share What Matters</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Unify</h1>
+        <p>A space to record and share your experiences with people you trust.</p>
+    </header>
+
+    <main>
+        {% if not session.get('username') %}
+            <!-- Login Form -->
+            <section class="auth-section">
+                <h2>Login</h2>
+                <form method="POST" action="{{ url_for('login') }}">
+                    <label for="username">Username:</label>
+                    <input type="text" name="username" required><br>
+
+                    <label for="password">Password:</label>
+                    <input type="password" name="password" required><br>
+
+                    <button type="submit">Login</button>
+                </form>
+                <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+            </section>
+
+        {% else %}
+            <!-- Welcome + Logout -->
+            <section class="welcome-section">
+                <h2>Welcome, {{ session['username'] }}!</h2>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </section>
+
+            <!-- Video Recording Section -->
+            <section class="record-section">
+                <h3>Record and Send a Video</h3>
+
+                <label for="trustedUser">Send to trusted user:</label>
+                <select id="trustedUser" name="trusted_user">
+                    {% for user in trusted_users if user != session['username'] %}
+                        <option value="{{ user }}">{{ user }}</option>
+                    {% endfor %}
+                </select><br><br>
+
+                <video id="preview" autoplay muted></video><br>
+                <button onclick="startRecording()">Start</button>
+                <button onclick="stopRecording()">Stop & Upload</button>
+            </section>
+
+            <script src="{{ url_for('static', filename='script.js') }}"></script>
+        {% endif %}
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+<h2>Record and Send Video</h2>
+
+<select id="trustedUser" name="trusted_user">
+  {% for user in trusted_users %}
+  <option value="{{ user }}">{{ user }}</option>
+  {% endfor %}
+</select>
+
+<br><br>
+<video id="preview" autoplay muted></video><br>
+<button onclick="startRecording()">Start</button>
+<button onclick="stopRecording()">Stop & Upload</button>
+
+<script src="/static/script.js"></script>

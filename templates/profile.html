@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile - FollowMe</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body class="profile">
+  <div class="container">
+    <h2>Your Profile</h2>
+    <div class="user">
+      <div class="avatar"></div>
+      <div>
+        <p><strong>Jane Doe</strong></p>
+        <p class="muted">jane@example.com</p>
+      </div>
+    </div>
+    <label>
+      <input type="checkbox" checked /> Enable Tracking
+    </label>
+    <div class="locations">
+      <h3>Recent Locations</h3>
+      <ul>
+        <li>📍 Downtown — 2 min ago</li>
+        <li>📍 Home — 30 min ago</li>
+        <li>📍 Cafe — 1 hour ago</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
+
+<h2>Welcome, {{ username }}</h2>
+<a href="/logout">Logout</a>
