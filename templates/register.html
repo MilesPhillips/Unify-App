@@ -1,7 +1,19 @@
-<h2>Register</h2>
-<form method="post">
-  Username: <input type="text" name="username" required><br>
-  Password: <input type="password" name="password" required><br>
-  <input type="submit" value="Register">
-</form>
-<a href="/login">Login</a>
+{% extends "Base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="static/style.css">
+<div class="login">
+  <h2>Register</h2>
+  <div class="container">
+    <form>
+      <input class = "input" type="fName" placeholder="first name" required />
+      <input class = "input" type="lName" placeholder="last name" required />
+      <input class = "input" type="email" placeholder="Email" required />
+      <input class = "input" type="password" placeholder="Password" required />
+      <button type="submit" class="btn primary">Login</button>
+    </form>
+  </div>
+  <a href="/login">Login</a>
+</div>
+{% endblock %}
+

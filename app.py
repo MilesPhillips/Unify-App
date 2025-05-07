@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('home.html')
 
 @app.route('/profile')
 def profile():
@@ -32,6 +32,10 @@ def contacts():
 @app.route('/history')
 def history():
     return render_template('History.html')
+
+@app.route('/register')
+def register():
+    return render_template('register.html')
 
 if __name__ == '__main__':
 	app.run(debug=True)

@@ -16,8 +16,9 @@ h1, h2 {
 p {
   color: #d1d5db;
 }
-input[type="email"],
-input[type="password"] {
+
+
+input {
   width: 100%;
   padding: 10px;
   margin: 10px 0;
