@@ -10,16 +10,16 @@ app = Flask(__name__)
 #app.run(port=5000)
 
 @app.route('/')
-def index():
-    return render_template('home.html')
+def home():
+    return render_template('Home.html')
 
 @app.route('/profile')
 def profile():
-	return render_template('profile.html')
+	return render_template('Profile.html')
 
 @app.route('/login')
 def login():
-    return render_template('login.html')
+    return render_template('Login.html')
 
 @app.route('/ai_coach')
 def ai_coach():
@@ -35,7 +35,15 @@ def history():
 
 @app.route('/register')
 def register():
-    return render_template('register.html')
+    return render_template('Register.html')
+
+@app.route('/index')
+def indexPage():
+    return render_template('Index.html')
+
+@app.route('/splash')
+def splashPage():
+    return render_template('Splash.html')
 
 if __name__ == '__main__':
 	app.run(debug=True)
