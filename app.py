@@ -1,7 +1,7 @@
 from flask import Flask
 from flask import render_template
 from flask import Flask, render_template, request, redirect, session, url_for, g
-from flask_bcrypt import Bcrypt
+#from flask_bcrypt import Bcrypt
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
