@@ -45,6 +45,11 @@ def indexPage():
 def splashPage():
     return render_template('Splash.html')
 
+@app.route('/record')
+def record():
+    return render_template('Record.html')
+
+
 if __name__ == '__main__':
 	app.run(debug=True)
  
