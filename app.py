@@ -9,6 +9,9 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 #app.run(port=5000)
 
+
+#in the static section add all of nate's java code so that it can be changed to typescript
+
 @app.route('/')
 def home():
     return render_template('Home.html')
