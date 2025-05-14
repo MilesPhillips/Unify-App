@@ -64,7 +64,8 @@
 
     <main>
         {% if not session.get('username') %}
-            <section class="auth-section center-content">
+            <!-- Login Form -->
+            <section class="auth-section">
                 <h2>Login</h2>
                 <form method="POST" action="{{ url_for('login') }}">
                     <label for="username">Username:</label>
@@ -77,13 +78,16 @@
                 </form>
                 <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
             </section>
+
         {% else %}
-            <section class="welcome-section center-content">
+            <!-- Welcome + Logout -->
+            <section class="welcome-section">
                 <h2>Welcome, {{ session['username'] }}!</h2>
                 <a href="{{ url_for('logout') }}">Logout</a>
             </section>
 
-            <section class="record-section center-content">
+            <!-- Video Recording Section -->
+            <section class="record-section">
                 <h3>Record and Send a Video</h3>
 
                 <label for="trustedUser">Send to trusted user:</label>
@@ -103,4 +107,4 @@
     </main>
 
 </body>
-</html>
+</html
