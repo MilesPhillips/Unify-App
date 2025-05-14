@@ -1,13 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Profile - FollowMe</title>
-  <link rel="stylesheet" href="static/style.css">
-</head>
-<body class="profile">
-  <div class="container">
+
+{% extends "Base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="static/style.css">
+<div class="container">
     <h2>Your Profile</h2>
     <div class="user">
       <div class="avatar"></div>
@@ -28,9 +24,4 @@
       </ul>
     </div>
   </div>
-</body>
-</html>
-
-<!--New login code-->
-<!--<h2>Welcome, {{ username }}</h2>
-<a href="/logout">Logout</a>-->
+{% endblock %}
