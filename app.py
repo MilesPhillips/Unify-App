@@ -4,6 +4,7 @@ import sqlite3
 import os
 from werkzeug.utils import secure_filename
 
+# langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
 # import firebase_admin
 # from firebase_admin import credentials
