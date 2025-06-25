@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice to Text</title>
+</head>
+<body>
+    <button id="startButton">Start Voice Input</button>
+    <div id="output"></div>
+
+    <input type="text" id="liveInput" placeholder="Type something..." />
+
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const outputDiv = document.getElementById('output');
+
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition)();
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            startButton.textContent = 'Listening...';
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            outputDiv.textContent = transcript;
+        };
+
+        recognition.onend = () => {
+            startButton.textContent = 'Start Voice Input';
+        };
+
+        startButton.addEventListener('click', () => {
+            recognition.start();
+        });
+
+        document.getElementById("output").addEventListener("input", function () {
+        const currentValue = this.value;
+
+        fetch("output", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ value: currentValue })
+        });
+    });
+    </script>
+</body>
+</html>
+
