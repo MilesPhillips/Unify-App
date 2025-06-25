@@ -24,6 +24,20 @@
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             outputDiv.textContent = transcript;
+            
+            // Send the transcribed text to Flask backend
+            fetch("/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ transcript: transcript })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         };
 
         recognition.onend = () => {
@@ -33,16 +47,7 @@
         startButton.addEventListener('click', () => {
             recognition.start();
         });
-
-        document.getElementById("output").addEventListener("input", function () {
-        const currentValue = this.value;
-
-        fetch("output", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ value: currentValue })
-        });
-    });
+    </script>
     </script>
 </body>
 </html>
