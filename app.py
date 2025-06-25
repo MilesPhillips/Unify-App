@@ -6,6 +6,13 @@ import sqlite3
 import os
 from werkzeug.utils import secure_filename
 
+import firebase_admin
+from firebase_admin import credentials
+
+cred = credentials.Certificate("path/to/serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+
 app = Flask(__name__)
 #app.run(port=5000)
 
