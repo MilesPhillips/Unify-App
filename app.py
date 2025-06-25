@@ -210,7 +210,7 @@ if __name__ == '__main__':
 def index():
     return render_template('index.html',
                            trusted_users=app.config['TRUSTED_USERS'].keys())
-    
+   
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     # your existing login logic...
@@ -218,3 +218,10 @@ def login():
         session['user_id'] = user[0]
         session['username'] = user[1]
         return redirect(url_for('index'))
+    
+@app.route('/live-update', methods=['POST'])
+def live_update():
+    data = request.get_json()
+    print("Received from DOM:", data.get("value"))
+    print("data")
+    return '', 204  # No content needed for async updates
