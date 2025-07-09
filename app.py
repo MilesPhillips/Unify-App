@@ -111,9 +111,17 @@ def splashPage():
 def record():
     return render_template('record.html', trusted_users=app.config['TRUSTED_USERS'].keys())
 
+@app.route('/index_transcripter_2')
+def index_transcripter_2():
+    return render_template('index_transcripter_2.html')
+
 @app.route('/index_transcripter')
 def index_transcripter():
     return render_template('index_transcripter.html')
+
+@app.route('/connect')
+def connect():
+    return render_template('connect.html')
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
