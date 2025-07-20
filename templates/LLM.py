@@ -9,6 +9,8 @@ from transformers import (
 )
 from datasets import load_dataset
 import argparse
+import json
+
 
 # 1. Configuration
 def setup_config():
@@ -115,3 +117,32 @@ if __name__ == "__main__":
     # Save final model
     trainer.save_model(f"{args.output_dir}/final_model")
     tokenizer.save_pretrained(f"{args.output_dir}/final_model")
+    
+def generate_and_store_response(model, tokenizer, output_file="llm_transcripts.jsonl", max_tokens=200):
+    model.eval()
+    device = model.device
+
+    print("\nType your prompt. Type 'exit' to quit.\n")
+
+    while True:
+        prompt = input("You: ").strip()
+        if prompt.lower() in ["exit", "quit"]:
+            break
+
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                pad_token_id=tokenizer.eos_token_id,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.9
+            )
+
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print(f"LLM: {response}\n")
+
+        with open(output_file, "a") as f:
+            f.write(json.dumps({"input": prompt, "output": response}) + "\n")
