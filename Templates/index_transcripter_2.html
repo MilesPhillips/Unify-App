@@ -1,7 +1,13 @@
 {% extends "Base.html" %}
 
 {% block content %}
-    <button id="startButton">Start Voice Input</button>
+    <container class="container">
+        <!-- personalize this content with stuff from your coach -->
+        <h2>Talk to your coach</h2>
+        <p>This is the Talk to your coach page content!</p>
+    </container>
+    <link rel="stylesheet" href="static/style.css">
+    <button class = "btn primary" id="startButton">Start Voice Input</button>
     <div id="output"></div>
 
     <input type="text" id="liveInput" placeholder="Type something..." />
