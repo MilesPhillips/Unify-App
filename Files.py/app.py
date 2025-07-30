@@ -5,6 +5,7 @@ import os
 from werkzeug.utils import secure_filename
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+import pdb
 
 # langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
@@ -125,11 +126,13 @@ def index_transcripter():
 def connect():
     return render_template('connect.html')
 
-@app.route('/transcribe', methods=['POST'])
-def transcribe():
-    data = request.get_json()
-    transcript = data.get('transcript')
-    print(f"Received transcript: {transcript}")
+#add a method here to get the transcript out
+#@app.route('/transcribe', methods=['POST'])
+#def transcribe():
+    #data = request.get_json()
+    #transcript = data.get('transcript')
+   # print(f"Received transcript: {transcript}")
+    
     
     # Here you can process the transcript as needed
     # For example, save to database, analyze, etc.
@@ -200,5 +203,6 @@ def transcribe():
     data = request.get_json()
     transcript = data.get("transcript", "")
     print(transcript)
-    
+    pdb.set_trace()
+   
     return render_template('index_transcripter_2.html') 
