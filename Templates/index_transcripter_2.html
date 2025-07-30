@@ -24,6 +24,7 @@
             startButton.textContent = 'Listening...';
         };
 
+        //we want to get the stuff from line 28 out
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             outputDiv.textContent = transcript;

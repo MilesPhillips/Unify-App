@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import pdb
+from LLM import load_model_and_tokenizer, llm_generate_response
 
 # langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
@@ -202,7 +203,8 @@ model.eval()
 def transcribe():
     data = request.get_json()
     transcript = data.get("transcript", "")
+    model, tokenizer = load_model_and_tokenizer("meta-llama/Meta-Llama-3-8B")
+    response = llm_generate_response(transcript, model, tokenizer)
     print(transcript)
-    pdb.set_trace()
    
     return render_template('index_transcripter_2.html') 
