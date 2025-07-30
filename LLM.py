@@ -65,6 +65,21 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
     )
     return tokenized_dataset
 
+def llm_generate_response(prompt, model, tokenizer, max_tokens=200):
+    model.eval()
+    device = model.device
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_tokens,
+            pad_token_id=tokenizer.eos_token_id,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9
+        )
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 # 4. Training Setup
 def setup_training(model, tokenizer, args):
     data_collator = DataCollatorForLanguageModeling(
