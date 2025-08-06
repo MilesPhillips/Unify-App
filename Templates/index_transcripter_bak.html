@@ -1,18 +1,15 @@
-{% extends "Base.html" %}
-
-{% block content %}
-    <container class="container">
-        <!-- personalize this content with stuff from your coach -->
-        <h2>Talk to your coach</h2>
-        <p>This is the Talk to your coach page content!</p>
-    </container>
-    <link rel="stylesheet" href="static/style.css">
-    <button class = "btn primary" id="startButton">Start Voice Input</button>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice to Text</title>
+</head>
+<body>
+    <button id="startButton">Start Voice Input</button>
     <div id="output"></div>
 
     <input type="text" id="liveInput" placeholder="Type something..." />
 
-    {% block scripts %}
+
     <script>
         const startButton = document.getElementById('startButton');
         const outputDiv = document.getElementById('output');
@@ -51,6 +48,7 @@
             recognition.start();
         });
     </script>
-    {% endblock %}
-{% endblock %}
+    </script>
+</body>
+</html>
 
