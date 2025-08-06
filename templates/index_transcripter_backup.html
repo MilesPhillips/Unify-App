@@ -1,13 +1,7 @@
 {% extends "Base.html" %}
 
 {% block content %}
-    <container class="container">
-        <!-- personalize this content with stuff from your coach -->
-        <h2>Talk to your coach</h2>
-        <p>This is the Talk to your coach page content!</p>
-    </container>
-    <link rel="stylesheet" href="static/style.css">
-    <button class = "btn primary" id="startButton">Start Voice Input</button>
+    <button id="startButton">Start Voice Input</button>
     <div id="output"></div>
 
     <input type="text" id="liveInput" placeholder="Type something..." />
@@ -24,7 +18,6 @@
             startButton.textContent = 'Listening...';
         };
 
-        //we want to get the stuff from line 28 out
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             outputDiv.textContent = transcript;
@@ -51,6 +44,13 @@
         startButton.addEventListener('click', () => {
             recognition.start();
         });
+
+        //code below just added
+        fetch("/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript: transcript }) // <-- sending the transcript
+        })
     </script>
     {% endblock %}
 {% endblock %}
