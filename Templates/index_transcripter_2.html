@@ -51,6 +51,13 @@
         startButton.addEventListener('click', () => {
             recognition.start();
         });
+
+        //code below just added
+        fetch("/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript: transcript }) // <-- sending the transcript
+        })
     </script>
     {% endblock %}
 {% endblock %}
