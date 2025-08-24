@@ -3,6 +3,7 @@ from flask_bcrypt import Bcrypt
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
+import LLM 
 
 # langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
@@ -111,8 +112,38 @@ def splashPage():
 def record():
     return render_template('record.html', trusted_users=app.config['TRUSTED_USERS'].keys())
 
-@app.route('/index_transcripter_2')
+@app.route('/index_transcripter', methods=['GET','POST'])
 def index_transcripter_2():
+    if request.method == 'POST':
+        try:
+            # Get the JSON data from the request
+            data = request.get_json()
+            transcript = data.get('transcript', '')
+            # pick a quantized model
+            model, tokenizer = LLM.load_model_and_tokenizer(model_name="your_model_name")
+            response = LLM.llm_generate_response(transcript, model, tokenizer)
+            print(f"Received transcript: {transcript}")
+            
+            # Here you can process the transcript
+            # For example, send it to your LLM:
+            # response = send_to_llm(transcript)
+            
+            # Return a response back to the frontend
+            return jsonify({
+                'status': 'success',
+                'message': 'Transcript received successfully',
+                'transcript': transcript,
+                # 'llm_response': response  # if you want to send LLM response back
+            })
+            
+        except Exception as e:
+            print(f"Error processing transcript: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500
+    
+    # Handle GET request - render the template
     return render_template('index_transcripter_2.html')
 
 @app.route('/index_transcripter')
