@@ -3,7 +3,25 @@ from flask_bcrypt import Bcrypt
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
+<<<<<<< HEAD
 import LLM 
+=======
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+import pdb
+from LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
+from dotenv import load_dotenv
+#from transformers import AutoTokenizer, AutoModelForCausalLM
+
+
+load_dotenv() # Load variables from .env
+
+database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
+api_key = os.getenv("KEY")
+pdb .set_trace()
+
+#Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
+>>>>>>> 3129ae424acdd1624e94509e52f86fde4e5f10da
 
 # langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
@@ -18,6 +36,13 @@ bcrypt = Bcrypt(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
 DATABASE = 'database.db'
+pipe = pipeline(
+    "text-generation",
+    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    torch_dtype="auto",  # or torch.bfloat16 if using GPU
+    device_map="auto"
+    )
+#Make sure this pipeline and messaging code works and reduce reduce reduce to make it simplified, get the llm to respond!!!
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
@@ -112,6 +137,7 @@ def splashPage():
 def record():
     return render_template('record.html', trusted_users=app.config['TRUSTED_USERS'].keys())
 
+<<<<<<< HEAD
 @app.route('/index_transcripter', methods=['GET','POST'])
 def index_transcripter_2():
     if request.method == 'POST':
@@ -146,6 +172,8 @@ def index_transcripter_2():
     # Handle GET request - render the template
     return render_template('index_transcripter_2.html')
 
+=======
+>>>>>>> 3129ae424acdd1624e94509e52f86fde4e5f10da
 @app.route('/index_transcripter')
 def index_transcripter():
     return render_template('index_transcripter.html')
@@ -154,11 +182,13 @@ def index_transcripter():
 def connect():
     return render_template('connect.html')
 
-@app.route('/transcribe', methods=['POST'])
-def transcribe():
-    data = request.get_json()
-    transcript = data.get('transcript')
-    print(f"Received transcript: {transcript}")
+#add a method here to get the transcript out
+#@app.route('/transcribe', methods=['POST'])
+#def transcribe():
+    #data = request.get_json()
+    #transcript = data.get('transcript')
+   # print(f"Received transcript: {transcript}")
+    
     
     # Here you can process the transcript as needed
     # For example, save to database, analyze, etc.
@@ -207,3 +237,102 @@ def logout():
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+    
+   
+#New transcript parsing code:
+# Load model and tokenizer once
+model_name = "meta-llama/Meta-Llama-3-8B"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer.pad_token = tokenizer.eos_token
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+    attn_implementation="flash_attention_2"
+)
+model.eval()
+
+
+@app.route("/index_transcripter", methods=["POST"])
+def transcribe():
+    data = request.get_json()
+    transcript = data.get("transcript", "")
+    Hugging_face_API_token= os.getenv("HF_API_TOKEN")
+    model, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    response = llm_generate_response(transcript, model, tokenizer)
+    print(response)
+  
+    return render_template('index_transcripter.html')
+
+
+#New test code
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    user_msg = (data.get("transcript") or data.get("message") or "").strip()
+    if not user_msg:
+        return jsonify({"error": "No message provided"}), 400
+
+    # initialize per-user session history
+    if "history" not in session:
+        session["history"] = []
+
+    # build prompt with history
+    prompt = build_prompt(session["history"], user_msg)
+
+    # generate with local model
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=220,
+            do_sample=True,
+            temperature=0.7,
+            top_p=0.9,
+            pad_token_id=tokenizer.eos_token_id
+        )
+
+    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # extract just the assistant continuation after the final "Assistant:"
+    reply = full_text.split("Assistant:")[-1].strip()
+
+    # update memory + persist
+    session["history"].append({"role": "user", "content": user_msg})
+    session["history"].append({"role": "assistant", "content": reply})
+    session.modified = True
+
+    store_interaction(user_msg, reply)
+
+    return jsonify({ "response": reply })
+
+@app.route("/index_transcripter", methods=["POST"])
+def transcribe_legacy():
+    data = request.get_json(silent=True) or {}
+    transcript = data.get("transcript", "").strip()
+    model, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    if not transcript:
+        return jsonify({"error": "No transcript"}), 400
+
+    # Reuse the chat logic
+    if "history" not in session:
+        session["history"] = []
+
+    prompt = build_prompt(session["history"], transcript)
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=220,
+            do_sample=True, temperature=0.7, top_p=0.9,
+            pad_token_id=tokenizer.eos_token_id
+        )
+    reply = tokenizer.decode(outputs[0], skip_special_tokens=True).split("Assistant:")[-1].strip()
+
+    session["history"].append({"role": "user", "content": transcript})
+    session["history"].append({"role": "assistant", "content": reply})
+    session.modified = True
+    store_interaction(transcript, reply)
+
+    return jsonify({"response": reply})
+

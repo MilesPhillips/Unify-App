@@ -24,6 +24,7 @@
             startButton.textContent = 'Listening...';
         };
 
+        //we want to get the stuff from line 28 out
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             outputDiv.textContent = transcript;
@@ -50,6 +51,28 @@
         startButton.addEventListener('click', () => {
             recognition.start();
         });
+
+        //code below just added
+        fetch("/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript: transcript }) // <-- sending the transcript
+        })
+
+        //new test code
+        fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) { console.error(data.error); return; }
+            const out = document.getElementById("output");
+            out.insertAdjacentHTML("beforeend", `<div><b>You:</b> ${transcript}</div>`);
+            out.insertAdjacentHTML("beforeend", `<div><b>LLM:</b> ${data.response}</div>`);
+        });
+
     </script>
     {% endblock %}
 {% endblock %}
