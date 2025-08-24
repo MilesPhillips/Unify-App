@@ -5,45 +5,29 @@ from transformers import (
     Trainer,
     TrainingArguments,
     DataCollatorForLanguageModeling,
-    set_seed
+    set_seed,
+    pipeline
 )
-from datasets import load_dataset
+#from datasets import load_dataset
 import argparse
 import json
 
+def build_prompt(history, user_msg):
+    lines = []
+    for turn in history:
+        role = "User" if turn["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {turn['content']}")
+    lines.append(f"User: {user_msg}")
+    lines.append("Assistant:")
+    return "\n".join(lines)
 
-# 1. Configuration
-def setup_config():
-    parser = argparse.ArgumentParser(description="LLM Training and Chat Interface")
-    parser.add_argument("--model_name", default="meta-llama/Meta-Llama-3-8B",
-                      help="Base model to fine-tune")
-    parser.add_argument("--dataset_name", default="your_dataset",
-                      help="HuggingFace dataset or path to local data")
-    parser.add_argument("--output_dir", default="./results",
-                      help="Output directory for checkpoints")
-    parser.add_argument("--lr", type=float, default=5e-5,
-                      help="Learning rate")
-    parser.add_argument("--epochs", type=int, default=3,
-                      help="Number of training epochs")
-    parser.add_argument("--batch_size", type=int, default=4,
-                      help="Per device batch size")
-    parser.add_argument("--gradient_accumulation", type=int, default=2,
-                      help="Gradient accumulation steps")
-    parser.add_argument("--max_seq_length", type=int, default=512,
-                      help="Maximum sequence length")
-    parser.add_argument("--do_eval", action="store_true",
-                      help="Whether to run evaluation")
-    parser.add_argument("--chat_only", action="store_true",
-                      help="Skip training and go directly to chat mode")
-    parser.add_argument("--model_path", default=None,
-                      help="Path to pre-trained model for chat mode")
-    parser.add_argument("--max_tokens", type=int, default=200,
-                      help="Maximum tokens to generate in chat mode")
-    parser.add_argument("--output_file", default="llm_transcripts.jsonl",
-                      help="File to store chat transcripts")
-    parser.add_argument("--system_instruction", default="You are a helpful AI assistant. You provide clear, accurate, and helpful responses to user questions. You are friendly, professional, and concise.",
-                      help="System instruction to guide the LLM's behavior")
-    return parser.parse_args()
+def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
+    try:
+        with open(path, "a") as f:
+            f.write(json.dumps({"input": user_text, "output": assistant_text}) + "\n")
+    except Exception as e:
+        print(f"⚠️ Failed to write transcript: {e}")
+
 
 # 2. Prepare Model and Tokenizer
 def load_model_and_tokenizer(model_name):
@@ -79,7 +63,7 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
             max_length=max_length,
             padding="max_length"
         )
-   
+  
     tokenized_dataset = dataset.map(
         tokenize_function,
         batched=True,
@@ -87,21 +71,24 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
     )
     return tokenized_dataset
 
-def llm_generate_response(prompt, model, tokenizer, max_tokens=200):
+def llm_generate_response(transcript, pipe, max_tokens=200):
     model.eval()
     device = model.device
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=max_tokens,
-            pad_token_id=tokenizer.eos_token_id,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9
-        )
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response
+    
+    messages = [
+        {"role": "system", "content": "You are a careing paitent friend."},
+        {"role": "user", "content": "Hey, how's your day going?"}
+    ]
+    messages[1]["content"] = transcript
+    prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+    output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+    print(output[0]["generated_text"])
+
+    return output
+
+
 # 4. Training Setup
 def setup_training(model, tokenizer, args):
     data_collator = DataCollatorForLanguageModeling(
