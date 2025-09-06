@@ -3,12 +3,10 @@ from flask_bcrypt import Bcrypt
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
-<<<<<<< HEAD
-import LLM 
-=======
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import pdb
+#for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
 from LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
 from dotenv import load_dotenv
 #from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -21,7 +19,6 @@ api_key = os.getenv("KEY")
 pdb .set_trace()
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
->>>>>>> 3129ae424acdd1624e94509e52f86fde4e5f10da
 
 # langchain, llamaindex or haystack
 # Uncomment and configure Firebase if needed
@@ -137,43 +134,6 @@ def splashPage():
 def record():
     return render_template('record.html', trusted_users=app.config['TRUSTED_USERS'].keys())
 
-<<<<<<< HEAD
-@app.route('/index_transcripter', methods=['GET','POST'])
-def index_transcripter_2():
-    if request.method == 'POST':
-        try:
-            # Get the JSON data from the request
-            data = request.get_json()
-            transcript = data.get('transcript', '')
-            # pick a quantized model
-            model, tokenizer = LLM.load_model_and_tokenizer(model_name="your_model_name")
-            response = LLM.llm_generate_response(transcript, model, tokenizer)
-            print(f"Received transcript: {transcript}")
-            
-            # Here you can process the transcript
-            # For example, send it to your LLM:
-            # response = send_to_llm(transcript)
-            
-            # Return a response back to the frontend
-            return jsonify({
-                'status': 'success',
-                'message': 'Transcript received successfully',
-                'transcript': transcript,
-                # 'llm_response': response  # if you want to send LLM response back
-            })
-            
-        except Exception as e:
-            print(f"Error processing transcript: {e}")
-            return jsonify({
-                'status': 'error',
-                'message': str(e)
-            }), 500
-    
-    # Handle GET request - render the template
-    return render_template('index_transcripter_2.html')
-
-=======
->>>>>>> 3129ae424acdd1624e94509e52f86fde4e5f10da
 @app.route('/index_transcripter')
 def index_transcripter():
     return render_template('index_transcripter.html')
@@ -296,6 +256,8 @@ def chat():
     full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # extract just the assistant continuation after the final "Assistant:"
     reply = full_text.split("Assistant:")[-1].strip()
+    
+    print("LLM reply:", reply)  # <-- Add this line
 
     # update memory + persist
     session["history"].append({"role": "user", "content": user_msg})
