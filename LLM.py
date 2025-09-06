@@ -12,6 +12,25 @@ from transformers import (
 import argparse
 import json
 
+
+def setup_config():
+    parser = argparse.ArgumentParser(description="LLM Training and Chat Interface")
+    parser.add_argument("--model_name", default="gpt2", help="HuggingFace model name or path")
+    parser.add_argument("--model_path", default=None, help="Local model path to load for chat mode")
+    parser.add_argument("--chat_only", action="store_true", help="Skip training and go directly to chat mode")
+    parser.add_argument("--max_tokens", type=int, default=50, help="Max tokens to generate in chat mode")
+    parser.add_argument("--output_file", default="llm_transcripts.jsonl", help="File to save chat transcripts")
+    parser.add_argument("--dataset_name", default="your_dataset", help="HuggingFace dataset or local path for training")
+    parser.add_argument("--output_dir", default="./results", help="Output directory for checkpoints")
+    parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate for training")
+    parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=4, help="Per-device training batch size")
+    parser.add_argument("--gradient_accumulation", type=int, default=2, help="Gradient accumulation steps")
+    parser.add_argument("--max_seq_length", type=int, default=512, help="Maximum sequence length for tokenization")
+    parser.add_argument("--do_eval", action="store_true", help="Run evaluation during training")
+    parser.add_argument("--system_instruction", default="You are a helpful assistant.", help="System instruction prepended to every user prompt")
+    return parser.parse_args()
+
 def build_prompt(history, user_msg):
     lines = []
     for turn in history:
@@ -77,8 +96,7 @@ def llm_generate_response(transcript, pipe, max_tokens=200):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     
     messages = [
-        {"role": "system", "content": "You are a careing paitent friend."},
-        {"role": "user", "content": "Hey, how's your day going?"}
+        {"role": "system", "content": "You are a caring patient friend."},
     ]
     messages[1]["content"] = transcript
     prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -160,17 +178,33 @@ def generate_and_store_response(model, tokenizer, args):
                 max_new_tokens=args.max_tokens,
                 pad_token_id=tokenizer.eos_token_id,
                 do_sample=True,
-                temperature=0.7,
-                top_p=0.9
+                temperature=0.6,
+                top_p=0.9,
+                top_k=50,
+                no_repeat_ngram_size=3,
+                repetition_penalty=1.2
             )
 
         # Only get the new generated tokens (exclude the input prompt)
-        response = tokenizer.decode(outputs[0][len(inputs['input_ids'][0]):], skip_special_tokens=True)
+        input_len = inputs['input_ids'].shape[1]
+        gen_tokens = outputs[0][input_len:]
+        response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
+
+        # Truncate at the next user turn if the model emits it (avoid cross-talk)
+        for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
+            idx = response.find(stop_marker)
+            if idx != -1:
+                response = response[:idx].strip()
+                break
         print(f"LLM: {response}\n")
 
-        # Store the conversation
+        # Store the conversation (include system instruction for context)
         with open(args.output_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps({"input": prompt, "output": response}) + "\n")
+            f.write(json.dumps({
+                "system_instruction": system_instruction,
+                "input": prompt,
+                "output": response
+            }) + "\n")
 
 # 5. Main Execution
 if __name__ == "__main__":
