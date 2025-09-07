@@ -1,3 +1,4 @@
+# python LLM.py --chat_only --model_name gpt2 --max_tokens 100
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -18,7 +19,7 @@ def setup_config():
     parser.add_argument("--model_name", default="gpt2", help="HuggingFace model name or path")
     parser.add_argument("--model_path", default=None, help="Local model path to load for chat mode")
     parser.add_argument("--chat_only", action="store_true", help="Skip training and go directly to chat mode")
-    parser.add_argument("--max_tokens", type=int, default=50, help="Max tokens to generate in chat mode")
+    parser.add_argument("--max_tokens", type=int, default=100, help="Max tokens to generate in chat mode")
     parser.add_argument("--output_file", default="llm_transcripts.jsonl", help="File to save chat transcripts")
     parser.add_argument("--dataset_name", default="your_dataset", help="HuggingFace dataset or local path for training")
     parser.add_argument("--output_dir", default="./results", help="Output directory for checkpoints")
@@ -28,7 +29,7 @@ def setup_config():
     parser.add_argument("--gradient_accumulation", type=int, default=2, help="Gradient accumulation steps")
     parser.add_argument("--max_seq_length", type=int, default=512, help="Maximum sequence length for tokenization")
     parser.add_argument("--do_eval", action="store_true", help="Run evaluation during training")
-    parser.add_argument("--system_instruction", default="You are a helpful assistant.", help="System instruction prepended to every user prompt")
+    parser.add_argument("--system_instruction", default="You are a friend of the user.", help="System instruction prepended to every user prompt")
     return parser.parse_args()
 
 def build_prompt(history, user_msg):
@@ -52,7 +53,7 @@ def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
 def load_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token  # Set pad token
-   
+
     try:
         # Try with flash attention first
         model = AutoModelForCausalLM.from_pretrained(
