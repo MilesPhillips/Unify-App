@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import pdb
 #for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
-from LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
+from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
 from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
