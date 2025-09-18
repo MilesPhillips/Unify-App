@@ -60,7 +60,7 @@ def load_model_and_tokenizer(model_name):
             model_name,
             torch_dtype=torch.bfloat16,  # Better for modern GPUs
             device_map="auto",           # Auto-distribute across GPUs
-            attn_implementation="flash_attention_2"  # If available
+            #attn_implementation="flash_attention_2"  # If available
         )
     except ImportError:
         # Fallback without flash attention (for CPU or systems without flash_attn)
@@ -100,8 +100,9 @@ def llm_generate_response(transcript, pipe, max_tokens=200):
         {"role": "system", "content": "You are a caring patient friend."},
     ]
     messages[1]["content"] = transcript
-    prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-
+    #prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    
     output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
     print(output[0]["generated_text"])
 
@@ -148,6 +149,8 @@ def generate_and_store_response(model, tokenizer, args):
     """Interactive chat function with the trained model"""
     model.eval()
     device = model.device
+    
+    history = []
 
     # System instruction - This is where the LLM gets its instructions!
     system_instruction = args.system_instruction
@@ -167,9 +170,12 @@ def generate_and_store_response(model, tokenizer, args):
 
         if not prompt:
             continue
+        
+          # Add user message to history
+        history.append({"role": "user", "content": prompt})
 
         # Combine system instruction with user prompt
-        full_prompt = f"{system_instruction}\n\nUser: {prompt}\nAssistant:"
+        full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
         
         inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
 

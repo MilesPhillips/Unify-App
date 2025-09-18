@@ -9,6 +9,7 @@ import pdb
 #for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
 from LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
 from dotenv import load_dotenv
+from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
@@ -16,7 +17,7 @@ load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
 api_key = os.getenv("KEY")
-pdb .set_trace()
+#pdb .set_trace()
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -214,16 +215,16 @@ model = AutoModelForCausalLM.from_pretrained(
 model.eval()
 
 
-@app.route("/index_transcripter", methods=["POST"])
-def transcribe():
-    data = request.get_json()
-    transcript = data.get("transcript", "")
-    Hugging_face_API_token= os.getenv("HF_API_TOKEN")
-    model, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-    response = llm_generate_response(transcript, model, tokenizer)
-    print(response)
+#@app.route("/index_transcripter", methods=["POST"])
+#def transcribe():
+    #data = request.get_json()
+    #transcript = data.get("transcript", "")
+    #Hugging_face_API_token= os.getenv("HF_API_TOKEN")
+    #odel, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    #response = llm_generate_response(transcript, model, tokenizer)
+    #print(response)
   
-    return render_template('index_transcripter.html')
+    #return render_template('index_transcripter.html')
 
 
 #New test code
@@ -257,7 +258,7 @@ def chat():
     # extract just the assistant continuation after the final "Assistant:"
     reply = full_text.split("Assistant:")[-1].strip()
     
-    print("LLM reply:", reply)  # <-- Add this line
+    print("LLM reply:", reply)
 
     # update memory + persist
     session["history"].append({"role": "user", "content": user_msg})
