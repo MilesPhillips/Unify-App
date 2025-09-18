@@ -36,6 +36,7 @@ app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxe
 DATABASE = 'database.db'
 pipe = pipeline(
     "text-generation",
+    #TinyLlama and Minstral gave the same type of out put, so find a different chat model to try ahd get a better reponce
     model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     torch_dtype="auto",  # or torch.bfloat16 if using GPU
     device_map="auto"
@@ -202,7 +203,7 @@ if __name__ == '__main__':
    
 #New transcript parsing code:
 # Load model and tokenizer once
-model_name = "meta-llama/Meta-Llama-3-8B"
+model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"#"meta-llama/Meta-Llama-3-8B"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 

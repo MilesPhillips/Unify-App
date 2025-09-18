@@ -9,7 +9,7 @@ from transformers import (
     set_seed,
     pipeline
 )
-#from datasets import load_dataset
+from datasets import load_dataset
 import argparse
 import json
 
@@ -38,7 +38,7 @@ def build_prompt(history, user_msg):
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
-    lines.append("Assistant:")
+    lines.append("Assistant: (Respond simply and accurately)")
     return "\n".join(lines)
 
 def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
@@ -91,7 +91,7 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
     )
     return tokenized_dataset
 
-def llm_generate_response(transcript, pipe, max_tokens=200):
+def llm_generate_response(transcript, pipe, max_tokens=60):
     model.eval()
     device = model.device
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -103,7 +103,20 @@ def llm_generate_response(transcript, pipe, max_tokens=200):
     #prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     
-    output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+    #new output
+    outputs = model.generate(
+    **inputs,
+    max_new_tokens=args.max_tokens,
+    pad_token_id=tokenizer.eos_token_id,
+    do_sample=True,
+    temperature=0.3,
+    top_p=0.8,      # Lowered
+    top_k=30,       # Lowered
+    no_repeat_ngram_size=3,
+    repetition_penalty=1.2
+)
+   #old outptu
+    #output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.5, top_k=30, top_p=0.8)
     print(output[0]["generated_text"])
 
     return output
