@@ -16,7 +16,6 @@ load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
 api_key = os.getenv("KEY")
-pdb .set_trace()
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -33,12 +32,7 @@ bcrypt = Bcrypt(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
 DATABASE = 'database.db'
-pipe = pipeline(
-    "text-generation",
-    model="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    torch_dtype="auto",  # or torch.bfloat16 if using GPU
-    device_map="auto"
-    )
+
 #Make sure this pipeline and messaging code works and reduce reduce reduce to make it simplified, get the llm to respond!!!
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -142,19 +136,6 @@ def index_transcripter():
 def connect():
     return render_template('connect.html')
 
-#add a method here to get the transcript out
-#@app.route('/transcribe', methods=['POST'])
-#def transcribe():
-    #data = request.get_json()
-    #transcript = data.get('transcript')
-   # print(f"Received transcript: {transcript}")
-    
-    
-    # Here you can process the transcript as needed
-    # For example, save to database, analyze, etc.
-    
-    return jsonify({'status': 'success', 'message': 'Transcript received', 'transcript': transcript})
-
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'video' not in request.files:
@@ -192,12 +173,6 @@ def live_update():
 def logout():
     session.clear()
     return redirect(url_for('login'))
-
-
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
-    
    
 #New transcript parsing code:
 # Load model and tokenizer once
@@ -214,16 +189,17 @@ model = AutoModelForCausalLM.from_pretrained(
 model.eval()
 
 
-@app.route("/index_transcripter", methods=["POST"])
-def transcribe():
-    data = request.get_json()
-    transcript = data.get("transcript", "")
-    Hugging_face_API_token= os.getenv("HF_API_TOKEN")
-    model, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-    response = llm_generate_response(transcript, model, tokenizer)
-    print(response)
+@app.route("/transcribe", methods=["POST"])
+def api_transcribe():
+    data = request.get_json(silent=True)
+    if not data or "transcript" not in data:
+        return jsonify({"status": "error", "message": "Missing 'transcript'"}), 400
+    transcript = data["transcript"].strip()
+    pdb.set_trace()
+    
+    print(transcript)
   
-    return render_template('index_transcripter.html')
+    return jsonify({"status": "ok", "message": "transcript received", "transcript": transcript})
 
 
 #New test code
@@ -268,6 +244,9 @@ def chat():
 
     return jsonify({ "response": reply })
 
+
+
+
 @app.route("/index_transcripter", methods=["POST"])
 def transcribe_legacy():
     data = request.get_json(silent=True) or {}
@@ -298,3 +277,7 @@ def transcribe_legacy():
 
     return jsonify({"response": reply})
 
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
+    
