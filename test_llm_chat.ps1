@@ -8,7 +8,7 @@ Write-Host "Type 'exit' or 'quit' to end the session." -ForegroundColor White
 Write-Host ""
 
 # Run the LLM in chat mode
-python LLM.py --chat_only --model_name gpt2 --max_tokens 50 --output_file test_chat.jsonl
+python lib/LLM.py --chat_only --model_name gpt2 --max_tokens 50 --output_file test_chat.jsonl
 
 Write-Host ""
 Write-Host "Chat session ended. Check test_chat.jsonl for the conversation log." -ForegroundColor Green
