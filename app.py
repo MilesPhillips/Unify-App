@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
 
+#HW: figure out this error, see if its on our end or on their's(put it in chat to find out), give it time too
+#it's most likely in the 
 
 load_dotenv() # Load variables from .env
 
