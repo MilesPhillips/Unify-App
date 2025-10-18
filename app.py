@@ -18,7 +18,12 @@ from transformers import pipeline
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
+<<<<<<< Updated upstream
 api_key = os.getenv("KEY")
+=======
+api_key = os.getenv("CLAUD_API_TOKEN")
+#pdb .set_trace()
+>>>>>>> Stashed changes
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 

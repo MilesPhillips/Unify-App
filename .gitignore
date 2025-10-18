@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Environment files
 .env
 .env.*
@@ -10,3 +11,9 @@ venv/
 # Python cache
 __pycache__/
 *.pyc.DS_Store
+=======
+# .gitignore
+
+# Ignore environment files
+.env
+>>>>>>> Stashed changes
