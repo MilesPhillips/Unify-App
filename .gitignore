@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # Environment files
 .env
 .env.*
@@ -10,10 +9,10 @@ venv/
 
 # Python cache
 __pycache__/
-*.pyc.DS_Store
-=======
-# .gitignore
+*.pyc
 
-# Ignore environment files
-.env
->>>>>>> Stashed changes
+# macOS
+.DS_Store
+
+# Test files (as requested)
+Test/
