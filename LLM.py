@@ -12,61 +12,7 @@ from transformers import (
 from datasets import load_dataset
 import argparse
 import json
-<<<<<<< Updated upstream
-#HW: figure out this error, see if its on our end or on their's(put it in chat to find out), give it time too
-#it's most likely in the response = claud_response(prompt) function on line 162
-
-import os
-from anthropic import Anthropic
-
-# Initialize the client. It automatically picks up the ANTHROPIC_API_KEY from environment variables.
-# Alternatively, you can pass it directly: client = Anthropic(api_key="your_api_key_here")
-
-#HW: Saving the chat to some database, extra: Try and cash the reponces from the user
-
-client = Anthropic()
-#api_key = os.getenv("CLAUD_API_TOKEN")
-
-def get_claude_response(user_message):
-    """
-    Sends a message to a Claude model and returns its response.
-    """
-    try:
-        message = client.messages.create(
-            max_tokens=1024,  # Maximum number of tokens to generate in the response
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_message,
-                }
-            ],
-            model="claude-3-7-sonnet-20250219",  # Specify the model you want to use
-        )
-        return message.content[0].text  # Extract the text content from the response
-    except Exception as e:
-        return f"An error occurred: {e}"
-    
-user_input = "Tell me a short story about a brave knight and a wise dragon."
-claude_output = get_claude_response(user_input)
-    
-
-def claud_response(user_msg):
-    #client = Anthropic(api_key="your-api-key")
-
-    response = client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=1000,
-        temperature=0.3,
-        system="You are a helpful assistant.",
-        messages=[
-            {"role": "user", "content": user_msg}
-        ]
-    )
-
-    return(response.content)
-#print(response.content)
-=======
->>>>>>> Stashed changes
+from lib.database_utils import save_transcript
 
 
 def setup_config():
@@ -146,8 +92,6 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
     )
     return tokenized_dataset
 
-<<<<<<< Updated upstream
-=======
 def llm_generate_response(transcript, pipe, max_tokens=60):
     model.eval()
     device = model.device
@@ -214,7 +158,6 @@ def setup_training(model, tokenizer, args):
         data_collator=data_collator,
     )
     return trainer
->>>>>>> Stashed changes
     
 def generate_and_store_response(model, tokenizer, args):
     """Interactive chat function with the trained model"""
@@ -234,11 +177,7 @@ def generate_and_store_response(model, tokenizer, args):
     print("Type your prompt. Type 'exit' to quit.\n")
 
     while True:
-<<<<<<< Updated upstream
-        prompt = input()
-=======
         prompt = input("You: ").strip()
->>>>>>> Stashed changes
         if prompt.lower() in ["exit", "quit"]:
             print("Goodbye!")
             break
@@ -266,19 +205,11 @@ def generate_and_store_response(model, tokenizer, args):
                 no_repeat_ngram_size=3,
                 repetition_penalty=1.2
             )
-<<<<<<< Updated upstream
-            
-=======
->>>>>>> Stashed changes
 
         # Only get the new generated tokens (exclude the input prompt)
         input_len = inputs['input_ids'].shape[1]
         gen_tokens = outputs[0][input_len:]
-<<<<<<< Updated upstream
-        response = get_claude_response(prompt)
-=======
         response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
->>>>>>> Stashed changes
 
         # Truncate at the next user turn if the model emits it (avoid cross-talk)
         for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
@@ -288,13 +219,16 @@ def generate_and_store_response(model, tokenizer, args):
                 break
         print(f"LLM: {response}\n")
 
-        # Store the conversation (include system instruction for context)
+        # Store the conversation to the database and the JSONL file
+        transcript = {
+            "system_instruction": system_instruction,
+            "input": prompt,
+            "output": response
+        }
+        save_transcript(transcript)
+
         with open(args.output_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "system_instruction": system_instruction,
-                "input": prompt,
-                "output": response
-            }) + "\n")
+            f.write(json.dumps(transcript) + "\n")
 
 # 5. Main Execution
 if __name__ == "__main__":
@@ -319,12 +253,9 @@ if __name__ == "__main__":
         model, tokenizer = load_model_and_tokenizer(args.model_name)
         tokenized_dataset = prepare_dataset(tokenizer, args.dataset_name, args.max_seq_length)
         
-<<<<<<< Updated upstream
-=======
         # Train
         trainer = setup_training(model, tokenizer, args)
         trainer.train()
->>>>>>> Stashed changes
         
         # Save final model
         final_model_path = f"{args.output_dir}/final_model"
@@ -335,9 +266,4 @@ if __name__ == "__main__":
         # Ask if user wants to chat with the trained model
         chat_prompt = input("\nWould you like to chat with the trained model? (y/N): ").strip().lower()
         if chat_prompt in ['y', 'yes']:
-<<<<<<< Updated upstream
             generate_and_store_response(model, tokenizer, args)
-            
-=======
-            generate_and_store_response(model, tokenizer, args)
->>>>>>> Stashed changes
