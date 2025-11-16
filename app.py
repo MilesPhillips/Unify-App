@@ -19,7 +19,11 @@ SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
-api_key = os.getenv("KEY")
+
+
+api_key = os.getenv("CLAUD_API_TOKEN")
+#pdb .set_trace()
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -36,6 +40,7 @@ bcrypt = Bcrypt(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
 DATABASE = 'database.db'
+
 #Make sure this pipeline and messaging code works and reduce reduce reduce to make it simplified, get the llm to respond!!!
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -179,7 +184,11 @@ def logout():
    
 #New transcript parsing code:
 # Load model and tokenizer once
+#models
+#model_name = "meta-llama/Meta-Llama-3-8B"
 model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"#"meta-llama/Meta-Llama-3-8B"
+
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 
@@ -238,8 +247,9 @@ def chat():
     full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # extract just the assistant continuation after the final "Assistant:"
     reply = full_text.split("Assistant:")[-1].strip()
-    
-    print("LLM reply:", reply)
+
+    print("LLM reply:", reply)  # <-- Add this line
+
 
     # update memory + persist
     session["history"].append({"role": "user", "content": user_msg})

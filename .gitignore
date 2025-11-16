@@ -16,3 +16,15 @@ __pycache__/
 
 # Test files (as requested)
 Test/
+
+# Editor settings
+.vscode/
+
+# Generated transcripts
+llm_transcripts.jsonl
+
+# Secrets
+Credentials.json
+
+# Audio recordings
+*.wav

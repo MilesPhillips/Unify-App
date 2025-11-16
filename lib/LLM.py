@@ -9,7 +9,11 @@ from transformers import (
     set_seed,
     pipeline
 )
+<<<<<<< HEAD
+#from datasets import load_dataset
+=======
 from datasets import load_dataset
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
 import argparse
 import json
 
@@ -38,7 +42,11 @@ def build_prompt(history, user_msg):
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
+<<<<<<< HEAD
+    lines.append("Assistant:")
+=======
     lines.append("Assistant: (Respond simply and accurately)")
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
     return "\n".join(lines)
 
 def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
@@ -60,7 +68,11 @@ def load_model_and_tokenizer(model_name):
             model_name,
             torch_dtype=torch.bfloat16,  # Better for modern GPUs
             device_map="auto",           # Auto-distribute across GPUs
+<<<<<<< HEAD
+            attn_implementation="flash_attention_2"  # If available
+=======
             #attn_implementation="flash_attention_2"  # If available
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
         )
     except ImportError:
         # Fallback without flash attention (for CPU or systems without flash_attn)
@@ -91,7 +103,11 @@ def prepare_dataset(tokenizer, dataset_name, max_length):
     )
     return tokenized_dataset
 
+<<<<<<< HEAD
+def llm_generate_response(transcript, pipe, max_tokens=200):
+=======
 def llm_generate_response(transcript, pipe, max_tokens=60):
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
     model.eval()
     device = model.device
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -100,6 +116,11 @@ def llm_generate_response(transcript, pipe, max_tokens=60):
         {"role": "system", "content": "You are a caring patient friend."},
     ]
     messages[1]["content"] = transcript
+<<<<<<< HEAD
+    prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+    output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+=======
     #prompt = pipe.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     
@@ -117,6 +138,7 @@ def llm_generate_response(transcript, pipe, max_tokens=60):
 )
    #old outptu
     #output = pipe(prompt, max_new_tokens=256, do_sample=True, temperature=0.5, top_k=30, top_p=0.8)
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
     print(output[0]["generated_text"])
 
     return output
@@ -162,8 +184,11 @@ def generate_and_store_response(model, tokenizer, args):
     """Interactive chat function with the trained model"""
     model.eval()
     device = model.device
+<<<<<<< HEAD
+=======
     
     history = []
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
 
     # System instruction - This is where the LLM gets its instructions!
     system_instruction = args.system_instruction
@@ -183,12 +208,18 @@ def generate_and_store_response(model, tokenizer, args):
 
         if not prompt:
             continue
+<<<<<<< HEAD
+
+        # Combine system instruction with user prompt
+        full_prompt = f"{system_instruction}\n\nUser: {prompt}\nAssistant:"
+=======
         
           # Add user message to history
         history.append({"role": "user", "content": prompt})
 
         # Combine system instruction with user prompt
         full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
         
         inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
 
