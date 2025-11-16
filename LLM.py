@@ -35,13 +35,14 @@ def setup_config():
     parser.add_argument("--system_instruction", default="You are a friend of the user.", help="System instruction prepended to every user prompt")
     return parser.parse_args()
 
-def build_prompt(history, user_msg):
-    lines = []
+#updated build_prompt function
+def build_prompt(history, user_msg, system_instruction="You are a helpful assistant. Respond simply, clearly, and accurately."):
+    lines = [f"System: {system_instruction}"]
     for turn in history:
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
-    lines.append("Assistant: (Respond simply and accurately)")
+    lines.append("Assistant:")
     return "\n".join(lines)
 
 def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):

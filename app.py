@@ -12,18 +12,14 @@ from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
 
-#HW: figure out this error, see if its on our end or on their's(put it in chat to find out), give it time too
-#it's most likely in the 
+# A clear system instruction for the LLM
+SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and accurately."
+
 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
-<<<<<<< Updated upstream
 api_key = os.getenv("KEY")
-=======
-api_key = os.getenv("CLAUD_API_TOKEN")
-#pdb .set_trace()
->>>>>>> Stashed changes
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -222,7 +218,10 @@ def chat():
         session["history"] = []
 
     # build prompt with history
-    prompt = build_prompt(session["history"], user_msg)
+    prompt = build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION)
+    if prompt == build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION):
+        print("Prompt matches build_prompt output.")
+        
 
     # generate with local model
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
@@ -253,7 +252,7 @@ def chat():
 
 
 
-
+# build prompt function reused from LLM.py(may need to adjust import paths if moved to lib/  , and be updated to match new version there)
 @app.route("/index_transcripter", methods=["POST"])
 def transcribe_legacy():
     data = request.get_json(silent=True) or {}
