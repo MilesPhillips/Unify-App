@@ -25,3 +25,6 @@ llm_transcripts.jsonl
 
 # Secrets
 Credentials.json
+
+# Audio recordings
+*.wav
