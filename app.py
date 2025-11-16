@@ -9,13 +9,21 @@ import pdb
 #for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
 from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
 from dotenv import load_dotenv
+from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
 
+#HW: figure out this error, see if its on our end or on their's(put it in chat to find out), give it time too
+#it's most likely in the 
 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
+
 api_key = os.getenv("KEY")
+
+api_key = os.getenv("CLAUD_API_TOKEN")
+#pdb .set_trace()
+>>>>>>> 3f5721dbb4926212658a093e8b2484b7172f62c4
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -176,7 +184,11 @@ def logout():
    
 #New transcript parsing code:
 # Load model and tokenizer once
-model_name = "meta-llama/Meta-Llama-3-8B"
+#models
+#model_name = "meta-llama/Meta-Llama-3-8B"
+model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"#"meta-llama/Meta-Llama-3-8B"
+
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 
@@ -232,8 +244,9 @@ def chat():
     full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # extract just the assistant continuation after the final "Assistant:"
     reply = full_text.split("Assistant:")[-1].strip()
-    
+
     print("LLM reply:", reply)  # <-- Add this line
+
 
     # update memory + persist
     session["history"].append({"role": "user", "content": user_msg})
