@@ -17,6 +17,11 @@ from lib.audio_utils import record_audio
 from lib.transcribe_audio import transcribe_audio
 
 
+#may need another llm to do the vector summary part later
+
+#rewite and srtip out everything we don't need and vise versa, also test at each stage and then check it in
+
+
 def setup_config():
     parser = argparse.ArgumentParser(description="LLM Training and Chat Interface")
     parser.add_argument("--model_name", default="gpt2", help="HuggingFace model name or path")
@@ -45,7 +50,12 @@ def build_prompt(history, user_msg, system_instruction="You are a helpful assist
     lines.append("Assistant:")
     return "\n".join(lines)
 
-
+def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
+    try:
+        with open(path, "a") as f:
+            f.write(json.dumps({"input": user_text, "output": assistant_text}) + "\n")
+    except Exception as e:
+        print(f"⚠️ Failed to write transcript: {e}")
 
 
 # 2. Prepare Model and Tokenizer
@@ -233,13 +243,16 @@ def generate_and_store_response(model, tokenizer, args):
                 break
         print(f"LLM: {response}\n")
 
-        # Store the conversation to the database
+        # Store the conversation to the database and the JSONL file
         transcript = {
             "system_instruction": system_instruction,
             "input": prompt,
             "output": response
         }
         save_transcript(transcript)
+
+        with open(args.output_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(transcript) + "\n")
 
 # 5. Main Execution
 if __name__ == "__main__":

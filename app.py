@@ -5,9 +5,12 @@ import os
 from werkzeug.utils import secure_filename
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
-from lib.LLM import load_model_and_tokenizer, build_prompt
+import pdb
+#for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
+from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
 from dotenv import load_dotenv
 from transformers import pipeline
+#from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # A clear system instruction for the LLM
 SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and accurately."
@@ -16,7 +19,10 @@ SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
+
+
 api_key = os.getenv("CLAUD_API_TOKEN")
+#pdb .set_trace()
 
 #Learn how to use copilet(vs code ai to the right) to suit you best!!!!!!!!!!
 
@@ -43,7 +49,7 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = sqlite3.connect(DATABASE)
+        db = g._database = sqlite3.connect(DATABASE)
     return db
 
 
@@ -200,6 +206,7 @@ def api_transcribe():
     if not data or "transcript" not in data:
         return jsonify({"status": "error", "message": "Missing 'transcript'"}), 400
     transcript = data["transcript"].strip()
+    pdb.set_trace()
     
     print(transcript)
   
@@ -219,7 +226,9 @@ def chat():
         session["history"] = []
 
     # build prompt with history
-    prompt = build_prompt(session["history"], user_msg)
+    prompt = build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION)
+    if prompt == build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION):
+        print("Prompt matches build_prompt output.")
         
 
     # generate with local model
@@ -246,9 +255,44 @@ def chat():
     session["history"].append({"role": "assistant", "content": reply})
     session.modified = True
 
+    store_interaction(user_msg, reply)
+
     return jsonify({ "response": reply })
 
+
+
+# build prompt function reused from LLM.py(may need to adjust import paths if moved to lib/  , and be updated to match new version there)
+@app.route("/index_transcripter", methods=["POST"])
+def transcribe_legacy():
+    data = request.get_json(silent=True) or {}
+    transcript = data.get("transcript", "").strip()
+    model, tokenizer = load_model_and_tokenizer("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    if not transcript:
+        return jsonify({"error": "No transcript"}), 400
+
+    # Reuse the chat logic
+    if "history" not in session:
+        session["history"] = []
+
+    prompt = build_prompt(session["history"], transcript)
+    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=220,
+            do_sample=True, temperature=0.7, top_p=0.9,
+            pad_token_id=tokenizer.eos_token_id
+        )
+    reply = tokenizer.decode(outputs[0], skip_special_tokens=True).split("Assistant:")[-1].strip()
+
+    session["history"].append({"role": "user", "content": transcript})
+    session["history"].append({"role": "assistant", "content": reply})
+    session.modified = True
+    store_interaction(transcript, reply)
+
+    return jsonify({"response": reply})
 
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+    
