@@ -16,6 +16,9 @@ from transformers import pipeline
 SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and accurately."
 
 
+# HW create and retrieve conversations had with the llm and save to db
+
+
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
