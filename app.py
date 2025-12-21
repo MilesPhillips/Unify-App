@@ -22,8 +22,11 @@ SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
+<<<<<<< Updated upstream
 
 
+=======
+>>>>>>> Stashed changes
 api_key = os.getenv("CLAUD_API_TOKEN")
 #pdb .set_trace()
 

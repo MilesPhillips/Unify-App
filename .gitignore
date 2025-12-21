@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Environment files
 .env
 .env.*
@@ -28,3 +29,9 @@ Credentials.json
 
 # Audio recordings
 *.wav
+=======
+# .gitignore
+
+# Ignore environment files
+.env
+>>>>>>> Stashed changes
