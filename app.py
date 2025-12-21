@@ -15,8 +15,12 @@ from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
 
-#HW: figure out this error, see if its on our end or on their's(put it in chat to find out), give it time too
-#it's most likely in the 
+# A clear system instruction for the LLM
+SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and accurately."
+
+
+# HW create and retrieve conversations had with the llm and save to db
+
 
 load_dotenv() # Load variables from .env
 
@@ -29,6 +33,7 @@ bcrypt = Bcrypt(app)
 # Use PostgreSQL for all persistent data
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
+
 #Make sure this pipeline and messaging code works and reduce reduce reduce to make it simplified, get the llm to respond!!!
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -265,7 +270,11 @@ def logout():
    
 #New transcript parsing code:
 # Load model and tokenizer once
+#models
+#model_name = "meta-llama/Meta-Llama-3-8B"
 model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"#"meta-llama/Meta-Llama-3-8B"
+
+
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 
@@ -304,7 +313,10 @@ def chat():
         session["history"] = []
 
     # build prompt with history
-    prompt = build_prompt(session["history"], user_msg)
+    prompt = build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION)
+    if prompt == build_prompt(session["history"], user_msg, SYSTEM_INSTRUCTION):
+        print("Prompt matches build_prompt output.")
+        
 
     # generate with local model
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
@@ -321,8 +333,9 @@ def chat():
     full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
     # extract just the assistant continuation after the final "Assistant:"
     reply = full_text.split("Assistant:")[-1].strip()
-    
-    print("LLM reply:", reply)
+
+    print("LLM reply:", reply)  # <-- Add this line
+
 
     # update memory + persist
     session["history"].append({"role": "user", "content": user_msg})
@@ -335,7 +348,7 @@ def chat():
 
 
 
-
+# build prompt function reused from LLM.py(may need to adjust import paths if moved to lib/  , and be updated to match new version there)
 @app.route("/index_transcripter", methods=["POST"])
 def transcribe_legacy():
     data = request.get_json(silent=True) or {}

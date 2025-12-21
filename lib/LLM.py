@@ -12,6 +12,9 @@ from transformers import (
 from datasets import load_dataset
 import argparse
 import json
+from lib.database_utils import save_transcript, get_conversation_history
+from lib.audio_utils import record_audio
+from lib.transcribe_audio import transcribe_audio
 
 
 def setup_config():
@@ -32,21 +35,17 @@ def setup_config():
     parser.add_argument("--system_instruction", default="You are a friend of the user.", help="System instruction prepended to every user prompt")
     return parser.parse_args()
 
-def build_prompt(history, user_msg):
-    lines = []
+#updated build_prompt function
+def build_prompt(history, user_msg, system_instruction="You are a helpful assistant. Respond simply, clearly, and accurately."):
+    lines = [f"System: {system_instruction}"]
     for turn in history:
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
-    lines.append("Assistant: (Respond simply and accurately)")
+    lines.append("Assistant:")
     return "\n".join(lines)
 
-def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
-    try:
-        with open(path, "a") as f:
-            f.write(json.dumps({"input": user_text, "output": assistant_text}) + "\n")
-    except Exception as e:
-        print(f"⚠️ Failed to write transcript: {e}")
+
 
 
 # 2. Prepare Model and Tokenizer
@@ -163,7 +162,15 @@ def generate_and_store_response(model, tokenizer, args):
     model.eval()
     device = model.device
     
+    # Load and display conversation history
+    print("\n--- Loading conversation history ---")
+    history_from_db = get_conversation_history('user', 'assistant')
     history = []
+    if history_from_db:
+        for sender, message in history_from_db:
+            print(f"{sender}: {message}")
+            history.append({"role": "user" if sender == "user" else "assistant", "content": message})
+    print("--- End of history ---\n")
 
     # System instruction - This is where the LLM gets its instructions!
     system_instruction = args.system_instruction
@@ -176,7 +183,15 @@ def generate_and_store_response(model, tokenizer, args):
     print("Type your prompt. Type 'exit' to quit.\n")
 
     while True:
-        prompt = input("You: ").strip()
+        choice = input("Would you like to (t)ype or (s)peak? ").strip().lower()
+        if choice == 's':
+            audio_file = "temp_recording.wav"
+            record_audio(audio_file, duration=5)
+            prompt = transcribe_audio(audio_file)
+            print(f"You (spoken): {prompt}")
+        else:
+            prompt = input("You: ").strip()
+
         if prompt.lower() in ["exit", "quit"]:
             print("Goodbye!")
             break
@@ -218,13 +233,13 @@ def generate_and_store_response(model, tokenizer, args):
                 break
         print(f"LLM: {response}\n")
 
-        # Store the conversation (include system instruction for context)
-        with open(args.output_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "system_instruction": system_instruction,
-                "input": prompt,
-                "output": response
-            }) + "\n")
+        # Store the conversation to the database
+        transcript = {
+            "system_instruction": system_instruction,
+            "input": prompt,
+            "output": response
+        }
+        save_transcript(transcript)
 
 # 5. Main Execution
 if __name__ == "__main__":

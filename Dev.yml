@@ -1,0 +1,18 @@
+# /Users/milesphillips/.config/tmuxinator/Dev.yml
+
+name: Dev
+root: /Users/milesphillips/Unify-App
+
+windows:
+  - window1:
+      panes:
+        - # Plain shell
+  - window2:
+      panes:
+        - # Plain shell
+  - window3:
+      panes:
+        - # Plain shell
+  - window4:
+      panes:
+        - # Plain shell

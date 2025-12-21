@@ -12,7 +12,14 @@ from transformers import (
 from datasets import load_dataset
 import argparse
 import json
-from lib.database_utils import save_transcript
+from lib.database_utils import save_transcript, get_conversation_history
+from lib.audio_utils import record_audio
+from lib.transcribe_audio import transcribe_audio
+
+
+#may need another llm to do the vector summary part later
+
+#rewite and srtip out everything we don't need and vise versa, also test at each stage and then check it in
 
 
 def setup_config():
@@ -33,13 +40,14 @@ def setup_config():
     parser.add_argument("--system_instruction", default="You are a friend of the user.", help="System instruction prepended to every user prompt")
     return parser.parse_args()
 
-def build_prompt(history, user_msg):
-    lines = []
+#updated build_prompt function
+def build_prompt(history, user_msg, system_instruction="You are a helpful assistant. Respond simply, clearly, and accurately."):
+    lines = [f"System: {system_instruction}"]
     for turn in history:
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
-    lines.append("Assistant: (Respond simply and accurately)")
+    lines.append("Assistant:")
     return "\n".join(lines)
 
 def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
@@ -164,32 +172,81 @@ def generate_and_store_response(model, tokenizer, args):
     model.eval()
     device = model.device
     
-    history = []
+    # Load and display conversation history
+    print("\n--- Loading conversation history ---")
+    # We load history for context, but we'll save the new session separately.
+    history_from_db = get_conversation_history('user', 'assistant')
+    chat_context = []
+    if history_from_db:
+        for sender, message in history_from_db:
+            print(f"{'User' if sender == 'user' else 'Assistant'}: {message}")
+            chat_context.append({"role": "user" if sender == "user" else "assistant", "content": message})
+    print("--- End of history ---\n")
 
-    # System instruction - This is where the LLM gets its instructions!
+    # This list will store the new conversation for saving
+    new_session_history = []
+
+    # System instruction
     system_instruction = args.system_instruction
 
     print(f"\n=== LLM Chat Interface ===")
     print(f"Model: {args.model_name if not args.model_path else args.model_path}")
-    print(f"Max tokens: {args.max_tokens}")
     print(f"System Instruction: {system_instruction}")
-    print(f"Transcripts will be saved to: {args.output_file}")
     print("Type your prompt. Type 'exit' to quit.\n")
 
     while True:
-        prompt = input("You: ").strip()
+        choice = input("Would you like to (t)ype or (s)peak? ").strip().lower()
+        if choice == 's':
+            audio_file = "temp_recording.wav"
+            record_audio(audio_file, duration=5)
+            prompt = transcribe_audio(audio_file)
+            print(f"You (spoken): {prompt}")
+        else:
+            prompt = input("You: ").strip()
+
         if prompt.lower() in ["exit", "quit"]:
+            # Save the entire new session history to the database on exit
+            if new_session_history:
+                print("\nSaving conversation to database...")
+                conn = None
+                try:
+                    import sqlite3
+                    from lib.database_utils import get_or_create_user, save_chat
+                    
+                    conn = sqlite3.connect('database.db')
+                    cur = conn.cursor()
+                    
+                    user_id = get_or_create_user(cur, "user")
+                    assistant_id = get_or_create_user(cur, "assistant")
+                    
+                    # Format the history for save_chat
+                    chat_to_save = []
+                    for turn in new_session_history:
+                        sender_name = "user" if turn["role"] == "user" else "assistant"
+                        chat_to_save.append((sender_name, turn["content"]))
+                        
+                    save_chat(cur, user_id, assistant_id, chat_to_save)
+                    conn.commit()
+                    print("Conversation saved successfully!")
+
+                except Exception as e:
+                    print(f"⚠️ Error saving conversation to database: {e}")
+                finally:
+                    if conn:
+                        conn.close()
+            
             print("Goodbye!")
             break
 
         if not prompt:
             continue
         
-          # Add user message to history
-        history.append({"role": "user", "content": prompt})
+        # Add user message to both the context for the model and the list for saving
+        chat_context.append({"role": "user", "content": prompt})
+        new_session_history.append({"role": "user", "content": prompt})
 
-        # Combine system instruction with user prompt
-        full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
+        # Build the prompt for the model using the full context
+        full_prompt = build_prompt(chat_context, "") # Pass empty user_msg as it's already in history
         
         inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
 
@@ -206,29 +263,24 @@ def generate_and_store_response(model, tokenizer, args):
                 repetition_penalty=1.2
             )
 
-        # Only get the new generated tokens (exclude the input prompt)
         input_len = inputs['input_ids'].shape[1]
         gen_tokens = outputs[0][input_len:]
-        response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
+        response = tokenizer.decode(gen_tokens, skip_special_tokens=True).strip()
 
-        # Truncate at the next user turn if the model emits it (avoid cross-talk)
         for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
             idx = response.find(stop_marker)
             if idx != -1:
                 response = response[:idx].strip()
-                break
+        
         print(f"LLM: {response}\n")
 
-        # Store the conversation to the database and the JSONL file
-        transcript = {
-            "system_instruction": system_instruction,
-            "input": prompt,
-            "output": response
-        }
-        save_transcript(transcript)
+        # Add assistant response to context and saving list
+        chat_context.append({"role": "assistant", "content": response})
+        new_session_history.append({"role": "assistant", "content": response})
 
+        # Also write to the flat file for simple logging
         with open(args.output_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(transcript) + "\n")
+            f.write(json.dumps({"input": prompt, "output": response}) + "\n")
 
 # 5. Main Execution
 if __name__ == "__main__":
