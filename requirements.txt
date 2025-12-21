@@ -8,6 +8,9 @@ anthropic
 psycopg2-binary
 python-dotenv
 python-docx
-openai-whisper
+# openai-whisper removed (not used). Use SpeechRecognition or browser APIs instead.
 SpeechRecognition
 numpy
+sounddevice
+scipy
+openai
