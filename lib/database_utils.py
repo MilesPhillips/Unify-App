@@ -21,6 +21,7 @@ def create_tables():
             email TEXT UNIQUE,
             bio TEXT,
             profile_picture_url TEXT,
+            password_hash TEXT,
             FOREIGN KEY (user_id) REFERENCES users (user_id)
         )
     ''')
@@ -53,14 +54,20 @@ def create_tables():
 def get_or_create_user(cursor, username):
     """
     Gets the user_id for a username, creating the user if it doesn't exist.
+    This is used for non-authenticated users like the 'assistant' or for simple logging.
+    It creates a shell profile.
     """
     cursor.execute("SELECT user_id FROM users WHERE username = ?;", (username,))
     user = cursor.fetchone()
     if user:
         return user[0]
     else:
+        # Create the main user entry
         cursor.execute("INSERT INTO users (username) VALUES (?);", (username,))
-        return cursor.lastrowid
+        user_id = cursor.lastrowid
+        # Create a corresponding, empty user profile
+        cursor.execute("INSERT INTO user_profiles (user_id) VALUES (?);", (user_id,))
+        return user_id
 
 def save_chat(cursor, user1_id, user2_id, chat_messages):
     """
@@ -162,3 +169,52 @@ def get_conversation_history(user1_username, user2_username):
             conn.close()
 
     return history
+
+# --- New Functions for Web User Authentication ---
+
+def create_web_user(username, password_hash):
+    """
+    Creates a new user for the web application.
+    Returns the new user's ID on success, or None if the user already exists.
+    """
+    conn = sqlite3.connect('database.db')
+    cur = conn.cursor()
+    try:
+        # Create the main user entry
+        cur.execute("INSERT INTO users (username) VALUES (?);", (username,))
+        user_id = cur.lastrowid
+        
+        # Create the user profile entry with the password
+        cur.execute(
+            "INSERT INTO user_profiles (user_id, password_hash) VALUES (?, ?);",
+            (user_id, password_hash)
+        )
+        conn.commit()
+        return user_id
+    except sqlite3.IntegrityError:
+        conn.rollback() # Roll back the transaction on error
+        return None # Indicates user already exists
+    finally:
+        conn.close()
+
+def get_user_for_login(username):
+    """
+    Retrieves user data needed for login verification.
+    Returns a dictionary-like object or None if user not found.
+    """
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row 
+    cur = conn.cursor()
+    
+    user_data = cur.execute(
+        """
+        SELECT u.user_id, u.username, up.password_hash
+        FROM users u
+        JOIN user_profiles up ON u.user_id = up.user_id
+        WHERE u.username = ?;
+        """,
+        (username,)
+    ).fetchone()
+    
+    conn.close()
+    return user_data

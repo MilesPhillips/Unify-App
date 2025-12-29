@@ -1,4 +1,7 @@
 # python LLM.py --chat_only --model_name gpt2 --max_tokens 100
+
+#make schema changes to add topics field to conversations table, so that we can do a trial and error of telling it what context to take into account
+
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -12,7 +15,6 @@ from transformers import (
 from datasets import load_dataset
 import argparse
 import json
-<<<<<<< Updated upstream
 from lib.database_utils import save_transcript, get_conversation_history
 from lib.audio_utils import record_audio
 from lib.transcribe_audio import transcribe_audio
@@ -21,8 +23,6 @@ from lib.transcribe_audio import transcribe_audio
 #may need another llm to do the vector summary part later
 
 #rewite and srtip out everything we don't need and vise versa, also test at each stage and then check it in
-=======
->>>>>>> Stashed changes
 
 
 def setup_config():
@@ -43,23 +43,14 @@ def setup_config():
     parser.add_argument("--system_instruction", default="You are a friend of the user.", help="System instruction prepended to every user prompt")
     return parser.parse_args()
 
-<<<<<<< Updated upstream
 #updated build_prompt function
 def build_prompt(history, user_msg, system_instruction="You are a helpful assistant. Respond simply, clearly, and accurately."):
     lines = [f"System: {system_instruction}"]
-=======
-def build_prompt(history, user_msg):
-    lines = []
->>>>>>> Stashed changes
     for turn in history:
         role = "User" if turn["role"] == "user" else "Assistant"
         lines.append(f"{role}: {turn['content']}")
     lines.append(f"User: {user_msg}")
-<<<<<<< Updated upstream
     lines.append("Assistant:")
-=======
-    lines.append("Assistant: (Respond simply and accurately)")
->>>>>>> Stashed changes
     return "\n".join(lines)
 
 def store_interaction(user_text, assistant_text, path="llm_transcripts.jsonl"):
@@ -184,7 +175,6 @@ def generate_and_store_response(model, tokenizer, args):
     model.eval()
     device = model.device
     
-<<<<<<< Updated upstream
     # Load and display conversation history
     print("\n--- Loading conversation history ---")
     # We load history for context, but we'll save the new session separately.
@@ -200,16 +190,10 @@ def generate_and_store_response(model, tokenizer, args):
     new_session_history = []
 
     # System instruction
-=======
-    history = []
-
-    # System instruction - This is where the LLM gets its instructions!
->>>>>>> Stashed changes
     system_instruction = args.system_instruction
 
     print(f"\n=== LLM Chat Interface ===")
     print(f"Model: {args.model_name if not args.model_path else args.model_path}")
-<<<<<<< Updated upstream
     print(f"System Instruction: {system_instruction}")
     print("Type your prompt. Type 'exit' to quit.\n")
 
@@ -254,36 +238,18 @@ def generate_and_store_response(model, tokenizer, args):
                     if conn:
                         conn.close()
             
-=======
-    print(f"Max tokens: {args.max_tokens}")
-    print(f"System Instruction: {system_instruction}")
-    print(f"Transcripts will be saved to: {args.output_file}")
-    print("Type your prompt. Type 'exit' to quit.\n")
-
-    while True:
-        prompt = input("You: ").strip()
-        if prompt.lower() in ["exit", "quit"]:
->>>>>>> Stashed changes
             print("Goodbye!")
             break
 
         if not prompt:
             continue
         
-<<<<<<< Updated upstream
         # Add user message to both the context for the model and the list for saving
         chat_context.append({"role": "user", "content": prompt})
         new_session_history.append({"role": "user", "content": prompt})
 
         # Build the prompt for the model using the full context
         full_prompt = build_prompt(chat_context, "") # Pass empty user_msg as it's already in history
-=======
-          # Add user message to history
-        history.append({"role": "user", "content": prompt})
-
-        # Combine system instruction with user prompt
-        full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
->>>>>>> Stashed changes
         
         inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
 
@@ -300,24 +266,14 @@ def generate_and_store_response(model, tokenizer, args):
                 repetition_penalty=1.2
             )
 
-<<<<<<< Updated upstream
         input_len = inputs['input_ids'].shape[1]
         gen_tokens = outputs[0][input_len:]
         response = tokenizer.decode(gen_tokens, skip_special_tokens=True).strip()
 
-=======
-        # Only get the new generated tokens (exclude the input prompt)
-        input_len = inputs['input_ids'].shape[1]
-        gen_tokens = outputs[0][input_len:]
-        response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
-
-        # Truncate at the next user turn if the model emits it (avoid cross-talk)
->>>>>>> Stashed changes
         for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
             idx = response.find(stop_marker)
             if idx != -1:
                 response = response[:idx].strip()
-<<<<<<< Updated upstream
         
         print(f"LLM: {response}\n")
 
@@ -328,18 +284,6 @@ def generate_and_store_response(model, tokenizer, args):
         # Also write to the flat file for simple logging
         with open(args.output_file, "a", encoding="utf-8") as f:
             f.write(json.dumps({"input": prompt, "output": response}) + "\n")
-=======
-                break
-        print(f"LLM: {response}\n")
-
-        # Store the conversation (include system instruction for context)
-        with open(args.output_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "system_instruction": system_instruction,
-                "input": prompt,
-                "output": response
-            }) + "\n")
->>>>>>> Stashed changes
 
 # 5. Main Execution
 if __name__ == "__main__":
@@ -377,8 +321,4 @@ if __name__ == "__main__":
         # Ask if user wants to chat with the trained model
         chat_prompt = input("\nWould you like to chat with the trained model? (y/N): ").strip().lower()
         if chat_prompt in ['y', 'yes']:
-<<<<<<< Updated upstream
             generate_and_store_response(model, tokenizer, args)
-=======
-            generate_and_store_response(model, tokenizer, args)
->>>>>>> Stashed changes

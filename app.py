@@ -18,15 +18,11 @@ SYSTEM_INSTRUCTION = "You are a helpful assistant. Respond simply, clearly, and 
 
 # HW create and retrieve conversations had with the llm and save to db
 
+# attepmt to create a logger for debuggin purposes
 
 load_dotenv() # Load variables from .env
 
 database_url = os.getenv("https://github.com/MilesPhillips/Unify-App.git")
-<<<<<<< Updated upstream
-
-
-=======
->>>>>>> Stashed changes
 api_key = os.getenv("CLAUD_API_TOKEN")
 #pdb .set_trace()
 
