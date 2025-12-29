@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import pdb
 #for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
-from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, store_interaction
+from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt
 from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -41,6 +41,10 @@ bcrypt = Bcrypt(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
 DATABASE = 'database.db'
+
+def store_interaction(user_msg, llm_reply):
+   print("--- Placeholder: store_interaction called but not yet implemented. ---")
+   pass
 
 #Make sure this pipeline and messaging code works and reduce reduce reduce to make it simplified, get the llm to respond!!!
 
