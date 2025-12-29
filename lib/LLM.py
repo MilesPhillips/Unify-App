@@ -12,9 +12,15 @@ from transformers import (
 from datasets import load_dataset
 import argparse
 import json
-from lib.database_utils import save_transcript, get_conversation_history
-from lib.audio_utils import record_audio
-from lib.transcribe_audio import transcribe_audio
+from lib.database_utils import save_transcript as db_save_transcript, get_conversation_history
+
+
+def save_transcript(user_input, model_output, user_username="user", assistant_username="assistant"):
+    transcript = {
+        "input": user_input,
+        "output": model_output
+    }
+    db_save_transcript(transcript, user_username=user_username, assistant_username=assistant_username)
 
 
 def setup_config():
