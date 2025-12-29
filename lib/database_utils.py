@@ -23,7 +23,7 @@ def get_db_connection():
 
 def create_tables():
     """
-    Creates the users, conversations, and messages tables if they don't already exist.
+    Creates the users, user_profiles, conversations, and messages tables if they don't already exist.
     """
     commands = (
         """
@@ -33,6 +33,14 @@ def create_tables():
             password TEXT, 
             email TEXT UNIQUE,
             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+            full_name TEXT,
+            bio TEXT,
+            profile_picture_url TEXT
         )
         """,
         """
@@ -63,7 +71,7 @@ def create_tables():
         cur.close()
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
-        print(error)
+        print(f"Error creating tables: {error}")
     finally:
         if conn is not None:
             conn.close()
@@ -71,6 +79,8 @@ def create_tables():
 def get_or_create_user(cursor, username):
     """
     Gets the user_id for a username, creating the user if it doesn't exist.
+    This is used for non-authenticated users like the 'assistant' or for simple logging.
+    It creates a shell profile.
     """
     cursor.execute("SELECT user_id FROM users WHERE username = %s;", (username,))
     user = cursor.fetchone()
@@ -78,7 +88,10 @@ def get_or_create_user(cursor, username):
         return user[0]
     else:
         cursor.execute("INSERT INTO users (username) VALUES (%s) RETURNING user_id;", (username,))
-        return cursor.fetchone()[0]
+        user_id = cursor.fetchone()[0]
+        # Create a corresponding, empty user profile
+        cursor.execute("INSERT INTO user_profiles (user_id) VALUES (%s);", (user_id,))
+        return user_id
 
 def save_chat(cursor, user1_id, user2_id, chat_messages):
     """
@@ -185,3 +198,63 @@ def get_conversation_history(user1_username, user2_username):
             conn.close()
 
     return history
+
+# --- New Functions for Web User Authentication ---
+
+def create_web_user(username, password_hash):
+    """
+    Creates a new user for the web application.
+    Returns the new user's ID on success, or None if the user already exists.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Create the main user entry
+        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s) RETURNING user_id;", (username, password_hash))
+        user_id = cur.fetchone()[0]
+        
+        # Create the user profile entry
+        cur.execute(
+            "INSERT INTO user_profiles (user_id) VALUES (%s);",
+            (user_id,)
+        )
+        conn.commit()
+        cur.close()
+        return user_id
+    except (Exception, psycopg2.DatabaseError) as error:
+        if conn:
+            conn.rollback()
+        print(f"Error creating web user: {error}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def get_user_for_login(username):
+    """
+    Retrieves user data needed for login verification.
+    Returns a dictionary-like object or None if user not found.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute(
+            """
+            SELECT user_id, username, password as password_hash
+            FROM users
+            WHERE username = %s;
+            """,
+            (username,)
+        )
+        user_data = cur.fetchone()
+        cur.close()
+        return user_data
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Error retrieving user for login: {error}")
+        return None
+    finally:
+        if conn:
+            conn.close()
