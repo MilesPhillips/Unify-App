@@ -1,55 +1,80 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+    return conn
 
 def create_tables():
     """
     Creates the users, user_profiles, conversations, and messages tables if they don't already exist.
     """
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    # Table for basic user identification
-    c.execute('''
+    commands = (
+        """
         CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE
-        )
-    ''')
-    # New table for detailed user profiles, linked one-to-one with users
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS user_profiles (
-            user_id INTEGER PRIMARY KEY,
-            full_name TEXT,
+            user_id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT, 
             email TEXT UNIQUE,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+            full_name TEXT,
             bio TEXT,
-            profile_picture_url TEXT,
-            password_hash TEXT,
-            FOREIGN KEY (user_id) REFERENCES users (user_id)
+            profile_picture_url TEXT
         )
-    ''')
-    # Table for conversations between two users
-    c.execute('''
+        """,
+        """
         CREATE TABLE IF NOT EXISTS conversations (
-            conversation_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user1_id INTEGER,
-            user2_id INTEGER,
-            topics TEXT,
-            FOREIGN KEY (user1_id) REFERENCES users (user_id),
-            FOREIGN KEY (user2_id) REFERENCES users (user_id)
+            conversation_id SERIAL PRIMARY KEY,
+            user1_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+            user2_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+            title TEXT,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
-    # Table for individual messages within a conversation
-    c.execute('''
+        """,
+        """
         CREATE TABLE IF NOT EXISTS messages (
-            message_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id INTEGER,
-            sender_id INTEGER,
+            message_id SERIAL PRIMARY KEY,
+            conversation_id INTEGER REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+            sender_id INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
             content TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (conversation_id) REFERENCES conversations (conversation_id),
-            FOREIGN KEY (sender_id) REFERENCES users (user_id)
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
-    conn.commit()
-    conn.close()
+        """
+    )
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        for command in commands:
+            cur.execute(command)
+        cur.close()
+        conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Error creating tables: {error}")
+    finally:
+        if conn is not None:
+            conn.close()
 
 def get_or_create_user(cursor, username):
     """
@@ -57,16 +82,15 @@ def get_or_create_user(cursor, username):
     This is used for non-authenticated users like the 'assistant' or for simple logging.
     It creates a shell profile.
     """
-    cursor.execute("SELECT user_id FROM users WHERE username = ?;", (username,))
+    cursor.execute("SELECT user_id FROM users WHERE username = %s;", (username,))
     user = cursor.fetchone()
     if user:
         return user[0]
     else:
-        # Create the main user entry
-        cursor.execute("INSERT INTO users (username) VALUES (?);", (username,))
-        user_id = cursor.lastrowid
+        cursor.execute("INSERT INTO users (username) VALUES (%s) RETURNING user_id;", (username,))
+        user_id = cursor.fetchone()[0]
         # Create a corresponding, empty user profile
-        cursor.execute("INSERT INTO user_profiles (user_id) VALUES (?);", (user_id,))
+        cursor.execute("INSERT INTO user_profiles (user_id) VALUES (%s);", (user_id,))
         return user_id
 
 def save_chat(cursor, user1_id, user2_id, chat_messages):
@@ -76,7 +100,7 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
     """
     # 1. Find existing conversation or create a new one
     cursor.execute(
-        "SELECT conversation_id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?);",
+        "SELECT conversation_id FROM conversations WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s);",
         (user1_id, user2_id, user2_id, user1_id)
     )
     conversation = cursor.fetchone()
@@ -84,10 +108,10 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
         conversation_id = conversation[0]
     else:
         cursor.execute(
-            "INSERT INTO conversations (user1_id, user2_id) VALUES (?, ?);",
+            "INSERT INTO conversations (user1_id, user2_id) VALUES (%s, %s) RETURNING conversation_id;",
             (user1_id, user2_id)
         )
-        conversation_id = cursor.lastrowid
+        conversation_id = cursor.fetchone()[0]
 
     # 2. Prepare and save messages in a batch
     messages_to_insert = []
@@ -96,34 +120,36 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
         messages_to_insert.append((conversation_id, sender_id, content))
 
     cursor.executemany(
-        "INSERT INTO messages (conversation_id, sender_id, content) VALUES (?, ?, ?);",
+        "INSERT INTO messages (conversation_id, sender_id, content) VALUES (%s, %s, %s);",
         messages_to_insert
     )
 
-def save_transcript(transcript):
+def save_transcript(transcript, user_username="user", assistant_username="assistant"):
     """
     Parses a transcript and saves it to the database.
     """
     conn = None
     try:
-        conn = sqlite3.connect('database.db')
+        conn = get_db_connection()
         cur = conn.cursor()
-        # Assuming "user" for the input and "assistant" for the output
-        user_id = get_or_create_user(cur, "user")
-        assistant_id = get_or_create_user(cur, "assistant")
+        
+        # Get or create the specified users
+        user_id = get_or_create_user(cur, user_username)
+        assistant_id = get_or_create_user(cur, assistant_username)
 
         chat = [
-            ("user", transcript["input"]),
-            ("assistant", transcript["output"])
+            (user_username, transcript["input"]),
+            (assistant_username, transcript["output"])
         ]
         save_chat(cur, user_id, assistant_id, chat)
         conn.commit()
-        print("Transcript saved to database successfully!")
+        cur.close()
+        print(f"Transcript for {user_username} saved to database successfully!")
 
-    except sqlite3.Error as error:
+    except (Exception, psycopg2.DatabaseError) as error:
         print(f"Error saving transcript to database: {error}")
     finally:
-        if conn:
+        if conn is not None:
             conn.close()
 
 def get_conversation_history(user1_username, user2_username):
@@ -133,11 +159,13 @@ def get_conversation_history(user1_username, user2_username):
     history = []
     conn = None
     try:
-        conn = sqlite3.connect('database.db')
+        conn = get_db_connection()
         cur = conn.cursor()
+        
         # 1. Get user IDs
-        cur.execute("SELECT user_id, username FROM users WHERE username IN (?, ?);", (user1_username, user2_username))
-        user_map = {username: user_id for username, user_id in cur.fetchall()}
+        cur.execute("SELECT user_id, username FROM users WHERE username IN (%s, %s);", (user1_username, user2_username))
+        rows = cur.fetchall()
+        user_map = {row[1]: row[0] for row in rows}
         user1_id = user_map.get(user1_username)
         user2_id = user_map.get(user2_username)
 
@@ -146,7 +174,7 @@ def get_conversation_history(user1_username, user2_username):
 
         # 2. Find the conversation
         cur.execute(
-            "SELECT conversation_id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?);",
+            "SELECT conversation_id FROM conversations WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s);",
             (user1_id, user2_id, user2_id, user1_id)
         )
         conversation = cur.fetchone()
@@ -157,15 +185,16 @@ def get_conversation_history(user1_username, user2_username):
 
         # 3. Retrieve messages
         cur.execute(
-            "SELECT u.username, m.content FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.conversation_id = ? ORDER BY m.created_at;",
+            "SELECT u.username, m.content FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.conversation_id = %s ORDER BY m.created_at;",
             (conversation_id,)
         )
         history = cur.fetchall()
+        cur.close()
 
-    except sqlite3.Error as error:
+    except (Exception, psycopg2.DatabaseError) as error:
         print(f"Error retrieving conversation history: {error}")
     finally:
-        if conn:
+        if conn is not None:
             conn.close()
 
     return history
@@ -177,44 +206,55 @@ def create_web_user(username, password_hash):
     Creates a new user for the web application.
     Returns the new user's ID on success, or None if the user already exists.
     """
-    conn = sqlite3.connect('database.db')
-    cur = conn.cursor()
+    conn = None
     try:
+        conn = get_db_connection()
+        cur = conn.cursor()
         # Create the main user entry
-        cur.execute("INSERT INTO users (username) VALUES (?);", (username,))
-        user_id = cur.lastrowid
+        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s) RETURNING user_id;", (username, password_hash))
+        user_id = cur.fetchone()[0]
         
-        # Create the user profile entry with the password
+        # Create the user profile entry
         cur.execute(
-            "INSERT INTO user_profiles (user_id, password_hash) VALUES (?, ?);",
-            (user_id, password_hash)
+            "INSERT INTO user_profiles (user_id) VALUES (%s);",
+            (user_id,)
         )
         conn.commit()
+        cur.close()
         return user_id
-    except sqlite3.IntegrityError:
-        conn.rollback() # Roll back the transaction on error
-        return None # Indicates user already exists
+    except (Exception, psycopg2.DatabaseError) as error:
+        if conn:
+            conn.rollback()
+        print(f"Error creating web user: {error}")
+        return None
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def get_user_for_login(username):
     """
     Retrieves user data needed for login verification.
     Returns a dictionary-like object or None if user not found.
     """
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row 
-    cur = conn.cursor()
-    
-    user_data = cur.execute(
-        """
-        SELECT u.user_id, u.username, up.password_hash
-        FROM users u
-        JOIN user_profiles up ON u.user_id = up.user_id
-        WHERE u.username = ?;
-        """,
-        (username,)
-    ).fetchone()
-    
-    conn.close()
-    return user_data
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute(
+            """
+            SELECT user_id, username, password as password_hash
+            FROM users
+            WHERE username = %s;
+            """,
+            (username,)
+        )
+        user_data = cur.fetchone()
+        cur.close()
+        return user_data
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Error retrieving user for login: {error}")
+        return None
+    finally:
+        if conn:
+            conn.close()

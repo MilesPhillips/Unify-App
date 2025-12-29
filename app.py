@@ -1,13 +1,14 @@
 from flask import Flask, render_template, request, redirect, session, url_for, g, jsonify, send_from_directory
 from flask_bcrypt import Bcrypt
-import sqlite3
+import psycopg2
 import os
 from werkzeug.utils import secure_filename
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import pdb
 #for this add from "lib." to the import, add a lib folder to project and put all the stuff inside it except app.py
-from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt
+from lib.LLM import load_model_and_tokenizer, llm_generate_response, build_prompt, save_transcript
+from lib.database_utils import get_db_connection, create_tables
 from dotenv import load_dotenv
 from transformers import pipeline
 #from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -40,7 +41,6 @@ app.secret_key = 'your_secret_key'
 bcrypt = Bcrypt(app)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['TRUSTED_USERS'] = {'user1': [], 'user2': []}  # simulate user inboxes
-DATABASE = 'database.db'
 
 def store_interaction(user_msg, llm_reply):
    print("--- Placeholder: store_interaction called but not yet implemented. ---")
@@ -55,7 +55,7 @@ if not os.path.exists(app.config['UPLOAD_FOLDER']):
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        db = g._database = get_db_connection()
     return db
 
 
@@ -68,12 +68,7 @@ def close_connection(exception):
 
 def init_db():
     with app.app_context():
-        db = get_db()
-        db.execute('''CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT NOT NULL UNIQUE,
-                        password TEXT NOT NULL)''')
-        db.commit()
+        create_tables()
 
 
 # Routes
@@ -94,7 +89,11 @@ def login():
         password = request.form['password']
 
         db = get_db()
-        user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        cur = db.cursor()
+        cur.execute('SELECT * FROM users WHERE username = %s', (username,))
+        user = cur.fetchone()
+        cur.close()
+        
         if user and bcrypt.check_password_hash(user[2], password):
             session['user_id'] = user[0]
             session['username'] = user[1]
@@ -122,10 +121,13 @@ def register():
 
         try:
             db = get_db()
-            db.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+            cur = db.cursor()
+            cur.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (username, password))
             db.commit()
+            cur.close()
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
+        except psycopg2.IntegrityError:
+            db.rollback()
             return 'Username already exists!'
     return render_template('register.html')
 

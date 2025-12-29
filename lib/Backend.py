@@ -1,29 +1,46 @@
 import psycopg2
 from psycopg2 import sql
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
 
 # Connection to the default "postgres" database
 conn = psycopg2.connect(
     dbname="postgres",
-    user="postgres",
-    password="your_password",
-    host="localhost",
-    port="5432"
+    user=DB_USER,
+    password=DB_PASS,
+    host=DB_HOST,
+    port=DB_PORT
 )
 conn.autocommit = True
 cur = conn.cursor()
 
 # 1. Create a new database (optional, skip if already created)
-cur.execute("CREATE DATABASE conversations_db;")
+# Check if database exists first
+cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (DB_NAME,))
+if not cur.fetchone():
+    cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(DB_NAME)))
+    print(f"Database {DB_NAME} created.")
+else:
+    print(f"Database {DB_NAME} already exists.")
+
 cur.close()
 conn.close()
 
 # 2. Connect to the new database
 conn = psycopg2.connect(
-    dbname="conversations_db",
-    user="postgres",
-    password="your_password",
-    host="localhost",
-    port="5432"
+    dbname=DB_NAME,
+    user=DB_USER,
+    password=DB_PASS,
+    host=DB_HOST,
+    port=DB_PORT
 )
 cur = conn.cursor()
 
