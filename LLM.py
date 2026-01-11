@@ -1,4 +1,7 @@
 # python LLM.py --chat_only --model_name gpt2 --max_tokens 100
+
+#make schema changes to add topics field to conversations table, so that we can do a trial and error of telling it what context to take into account
+
 import torch
 from transformers import (
     AutoModelForCausalLM,

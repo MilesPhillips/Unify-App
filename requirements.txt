@@ -13,4 +13,4 @@ SpeechRecognition
 numpy
 sounddevice
 scipy
-openai
+openaipsycopg2-binary
