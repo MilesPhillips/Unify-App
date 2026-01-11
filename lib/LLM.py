@@ -11,16 +11,9 @@ from transformers import (
 )
 from datasets import load_dataset
 import argparse
-import json
-from lib.database_utils import save_transcript as db_save_transcript, get_conversation_history
-
-
-def save_transcript(user_input, model_output, user_username="user", assistant_username="assistant"):
-    transcript = {
-        "input": user_input,
-        "output": model_output
-    }
-    db_save_transcript(transcript, user_username=user_username, assistant_username=assistant_username)
+from lib.database_utils import save_llm_interaction, get_conversation_history, get_or_create_user, get_connection_from_env
+from lib.audio_utils import record_audio
+from lib.transcribe_audio import transcribe_audio
 
 
 def setup_config():
@@ -168,84 +161,123 @@ def generate_and_store_response(model, tokenizer, args):
     model.eval()
     device = model.device
     
-    # Load and display conversation history
-    print("\n--- Loading conversation history ---")
-    history_from_db = get_conversation_history('user', 'assistant')
-    history = []
-    if history_from_db:
-        for sender, message in history_from_db:
-            print(f"{sender}: {message}")
-            history.append({"role": "user" if sender == "user" else "assistant", "content": message})
-    print("--- End of history ---\n")
+    conn = get_connection_from_env()
+    with conn.cursor() as cur:
+        user_id = get_or_create_user(cur, "user")
+        assistant_id = get_or_create_user(cur, "assistant")
 
-    # System instruction - This is where the LLM gets its instructions!
-    system_instruction = args.system_instruction
+        # Load and display conversation history
+        print("\n--- Loading conversation history ---")
+        history_from_db = get_conversation_history(cur, user_id, assistant_id)
+        history = []
+        if history_from_db:
+            for sender, message in history_from_db:
+                print(f"{sender}: {message}")
+                history.append({"role": "user" if sender == "user" else "assistant", "content": message})
+        print("--- End of history ---\n")
 
-    print(f"\n=== LLM Chat Interface ===")
-    print(f"Model: {args.model_name if not args.model_path else args.model_path}")
-    print(f"Max tokens: {args.max_tokens}")
-    print(f"System Instruction: {system_instruction}")
-    print(f"Transcripts will be saved to: {args.output_file}")
-    print("Type your prompt. Type 'exit' to quit.\n")
+        # System instruction - This is where the LLM gets its instructions!
+        system_instruction = args.system_instruction
 
-    while True:
-        choice = input("Would you like to (t)ype or (s)peak? ").strip().lower()
-        if choice == 's':
-            audio_file = "temp_recording.wav"
-            record_audio(audio_file, duration=5)
-            prompt = transcribe_audio(audio_file)
-            print(f"You (spoken): {prompt}")
-        else:
-            prompt = input("You: ").strip()
+        print(f"\n=== LLM Chat Interface ===")
+        print(f"Model: {args.model_name if not args.model_path else args.model_path}")
+        print(f"Max tokens: {args.max_tokens}")
+        print(f"System Instruction: {system_instruction}")
+        print(f"Transcripts will be saved to: {args.output_file}")
+        print("Type your prompt. Type 'exit' to quit.\n")
 
-        if prompt.lower() in ["exit", "quit"]:
-            print("Goodbye!")
-            break
+        while True:
+            choice = input("Would you like to (t)ype or (s)peak? ").strip().lower()
+            if choice == 's':
+                audio_file = "temp_recording.wav"
+                record_audio(audio_file, duration=5)
+                prompt = transcribe_audio(audio_file)
+                print(f"You (spoken): {prompt}")
+            else:
+                prompt = input("You: ").strip()
 
-        if not prompt:
-            continue
-        
-          # Add user message to history
-        history.append({"role": "user", "content": prompt})
-
-        # Combine system instruction with user prompt
-        full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
-        
-        inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
-
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=args.max_tokens,
-                pad_token_id=tokenizer.eos_token_id,
-                do_sample=True,
-                temperature=0.6,
-                top_p=0.9,
-                top_k=50,
-                no_repeat_ngram_size=3,
-                repetition_penalty=1.2
-            )
-
-        # Only get the new generated tokens (exclude the input prompt)
-        input_len = inputs['input_ids'].shape[1]
-        gen_tokens = outputs[0][input_len:]
-        response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
-
-        # Truncate at the next user turn if the model emits it (avoid cross-talk)
-        for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
-            idx = response.find(stop_marker)
-            if idx != -1:
-                response = response[:idx].strip()
+            if prompt.lower() in ["exit", "quit"]:
+                print("Goodbye!")
                 break
-        print(f"LLM: {response}\n")
 
-        # Store the conversation to the database
-        transcript = {
-            "system_instruction": system_instruction,
-            "input": prompt,
-            "output": response
-        }
-        save_transcript(transcript)
+            if not prompt:
+                continue
+            
+            # Add user message to history
+            history.append({"role": "user", "content": prompt})
+
+            # Combine system instruction with user prompt
+            full_prompt = f"System: {system_instruction}\n" + build_prompt(history[:-1], prompt)
+            
+            inputs = tokenizer(full_prompt, return_tensors="pt").to(device)
+
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=args.max_tokens,
+                    pad_token_id=tokenizer.eos_token_id,
+                    do_sample=True,
+                    temperature=0.6,
+                    top_p=0.9,
+                    top_k=50,
+                    no_repeat_ngram_size=3,
+                    repetition_penalty=1.2
+                )
+
+            # Only get the new generated tokens (exclude the input prompt)
+            input_len = inputs['input_ids'].shape[1]
+            gen_tokens = outputs[0][input_len:]
+            response = tokenizer.decode(gen_tokens, skip_special_tokens=True)
+
+            # Truncate at the next user turn if the model emits it (avoid cross-talk)
+            for stop_marker in ['\nUser:', '\nUser', 'User:', '\nYou:']:
+                idx = response.find(stop_marker)
+                if idx != -1:
+                    response = response[:idx].strip()
+                    break
+            print(f"LLM: {response}\n")
+
+            # Store the conversation to the database
+            save_llm_interaction(cur, user_id, prompt, response)
+            conn.commit()
+
+# 5. Main Execution
+if __name__ == "__main__":
+    set_seed(42)  # For reproducibility
+    args = setup_config()
+    
+    print(f"=== LLM Setup ===")
+    print(f"Chat only mode: {args.chat_only}")
+    print(f"Model: {args.model_name if not args.model_path else args.model_path}")
+    
+    if args.chat_only:
+        # Load model for chat only (no training)
+        model_to_load = args.model_path if args.model_path else args.model_name
+        print(f"Loading model for chat: {model_to_load}")
+        model, tokenizer = load_model_and_tokenizer(model_to_load)
+        generate_and_store_response(model, tokenizer, args)
+    else:
+        # Full training pipeline
+        print("Starting training pipeline...")
+        
+        # Load components
+        model, tokenizer = load_model_and_tokenizer(args.model_name)
+        tokenized_dataset = prepare_dataset(tokenizer, args.dataset_name, args.max_seq_length)
+        
+        # Train
+        trainer = setup_training(model, tokenizer, args)
+        trainer.train()
+        
+        # Save final model
+        final_model_path = f"{args.output_dir}/final_model"
+        trainer.save_model(final_model_path)
+        tokenizer.save_pretrained(final_model_path)
+        print(f"Model saved to: {final_model_path}")
+        
+        # Ask if user wants to chat with the trained model
+        chat_prompt = input("\nWould you like to chat with the trained model? (y/N): ").strip().lower()
+        if chat_prompt in ['y', 'yes']:
+            generate_and_store_response(model, tokenizer, args)
 
 # 5. Main Execution
 if __name__ == "__main__":
