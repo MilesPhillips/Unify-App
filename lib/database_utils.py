@@ -93,6 +93,7 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
     """
     Saves a chat between two users to the database.
     Finds an existing conversation or creates a new one.
+    `chat_messages` is a list of dicts, each with "sender_id" and "content" keys.
     """
     # 1. Find existing conversation or create a new one
     cursor.execute(
@@ -110,10 +111,10 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
         conversation_id = cursor.fetchone()[0]
 
     # 2. Prepare and save messages in a batch
-    messages_to_insert = []
-    for sender, content in chat_messages:
-        sender_id = user1_id if sender == "user" else user2_id
-        messages_to_insert.append((conversation_id, sender_id, content))
+    messages_to_insert = [
+        (conversation_id, msg['sender_id'], msg['content'])
+        for msg in chat_messages
+    ]
 
     execute_values(
         cursor,
@@ -121,72 +122,35 @@ def save_chat(cursor, user1_id, user2_id, chat_messages):
         messages_to_insert
     )
 
-def save_transcript(transcript):
+def save_llm_interaction(cursor, user_id, user_message, llm_response):
     """
-    Parses a transcript and saves it to the database.
+    Saves a single interaction between a user and the LLM to the database.
     """
-    conn = None
-    try:
-        conn = get_connection_from_env()
-        cur = conn.cursor()
-        # Assuming "user" for the input and "assistant" for the output
-        user_id = get_or_create_user(cur, "user")
-        assistant_id = get_or_create_user(cur, "assistant")
+    assistant_id = get_or_create_user(cursor, "assistant")
+    chat_messages = [
+        {"sender_id": user_id, "content": user_message},
+        {"sender_id": assistant_id, "content": llm_response},
+    ]
+    save_chat(cursor, user_id, assistant_id, chat_messages)
 
-        chat = [
-            ("user", transcript["input"]),
-            ("assistant", transcript["output"])
-        ]
-        save_chat(cur, user_id, assistant_id, chat)
-        conn.commit()
-        print("Transcript saved to database successfully!")
-
-    except psycopg2.Error as error:
-        print(f"Error saving transcript to database: {error}")
-    finally:
-        if conn:
-            conn.close()
-
-def get_conversation_history(user1_username, user2_username):
+def get_conversation_history(cursor, user1_id, user2_id):
     """
     Retrieves the chat history between two users from the database.
     """
-    history = []
-    conn = None
-    try:
-        conn = get_connection_from_env()
-        cur = conn.cursor()
-        # 1. Get user IDs
-        cur.execute("SELECT user_id, username FROM users WHERE username IN (%s, %s);", (user1_username, user2_username))
-        user_map = {username: user_id for user_id, username in cur.fetchall()}
-        user1_id = user_map.get(user1_username)
-        user2_id = user_map.get(user2_username)
+    # 1. Find the conversation
+    cursor.execute(
+        "SELECT conversation_id FROM conversations WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s);",
+        (user1_id, user2_id, user2_id, user1_id)
+    )
+    conversation = cursor.fetchone()
+    if not conversation:
+        return [] # No conversation found
 
-        if not all([user1_id, user2_id]):
-            return [] # No history if one of the users doesn't exist
+    conversation_id = conversation[0]
 
-        # 2. Find the conversation
-        cur.execute(
-            "SELECT conversation_id FROM conversations WHERE (user1_id = %s AND user2_id = %s) OR (user1_id = %s AND user2_id = %s);",
-            (user1_id, user2_id, user2_id, user1_id)
-        )
-        conversation = cur.fetchone()
-        if not conversation:
-            return [] # No conversation found
-
-        conversation_id = conversation[0]
-
-        # 3. Retrieve messages
-        cur.execute(
-            "SELECT u.username, m.content FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.conversation_id = %s ORDER BY m.created_at;",
-            (conversation_id,)
-        )
-        history = cur.fetchall()
-
-    except psycopg2.Error as error:
-        print(f"Error retrieving conversation history: {error}")
-    finally:
-        if conn:
-            conn.close()
-
-    return history
+    # 2. Retrieve messages
+    cursor.execute(
+        "SELECT u.username, m.content FROM messages m JOIN users u ON m.sender_id = u.user_id WHERE m.conversation_id = %s ORDER BY m.created_at;",
+        (conversation_id,)
+    )
+    return cursor.fetchall()
