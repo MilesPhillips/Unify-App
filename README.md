@@ -9,6 +9,7 @@ Designated Support App
 
 - **Backend**: Flask framework for building the application backend.
 - **AI Integration**: Leveraging large language models for coaching functionality.
+- **Database**: PostgreSQL
 
 ## Getting Started
 
@@ -20,11 +21,28 @@ Designated Support App
     ```bash
     cd Unify-App
     ```
-3. Install dependencies:
+3. Create a `.env` file by copying the `.env.example` file and update the environment variables.
+    ```bash
+    cp .env.example .env
+    ```
+4. Install dependencies:
     ```bash
     pip install -r requirements.txt
     ```
-4. Run the application:
+
+## Development Setup
+
+This project uses Docker and `docker-compose` to run the PostgreSQL database.
+
+1. **Start the database:**
+    ```bash
+    docker-compose up -d
+    ```
+2. **Create the database tables:**
+    ```bash
+    python create_db_tables.py
+    ```
+3. **Run the application:**
     ```bash
     flask run
     ```

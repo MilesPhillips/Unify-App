@@ -26,21 +26,20 @@ def get_db_params_from_env():
 def main():
     params = get_db_params_from_env()
 
-    # Example chat between two identified parties.
-    # The project helper expects chat_messages as an iterable of (sender, content) tuples.
-    # In this example we treat "alice" as the conversational "user" and "assistant" as the other party.
-    chat_messages = [
-        ("user", "Hey, can you summarize the meeting notes?"),
-        ("assistant", "Sure — here are the highlights: ..."),
-        ("user", "Thanks! Also, add action items.")
-    ]
-
     try:
         with psycopg2.connect(**params) as conn:
             with conn.cursor() as cur:
                 # Create or get the two participants
                 alice_id = db.get_or_create_user(cur, "alice")
                 assistant_id = db.get_or_create_user(cur, "assistant")
+
+                # Example chat between two identified parties.
+                # The project helper expects chat_messages as an iterable of dicts.
+                chat_messages = [
+                    {"sender_id": alice_id, "content": "Hey, can you summarize the meeting notes?"},
+                    {"sender_id": assistant_id, "content": "Sure — here are the highlights: ..."},
+                    {"sender_id": alice_id, "content": "Thanks! Also, add action items."}
+                ]
 
                 # Save the chat. db.save_chat will create a conversation and insert messages.
                 db.save_chat(cur, alice_id, assistant_id, chat_messages)
